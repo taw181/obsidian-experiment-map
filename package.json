@@ -1,0 +1,23 @@
+{
+  "name": "obsidian-experiment-map",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Clickable map of lasers, beam paths and control electronics, built from component notes.",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "dev": "node esbuild.config.mjs --watch",
+    "dist": "npm run build && node scripts/dist.mjs",
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
+  },
+  "devDependencies": {
+    "cytoscape": "3.34.3",
+    "esbuild": "0.28.2",
+    "js-yaml": "4.1.0"
+  },
+  "license": "MIT",
+  "author": "Tom Walker",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/taw181/obsidian-experiment-map.git"
+  }
+}

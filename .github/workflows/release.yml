@@ -1,0 +1,33 @@
+name: Release
+
+# Push a tag like 0.2.1 (npm version 0.2.1 && git push --follow-tags) to build
+# the plugin and publish a GitHub release with the files the install scripts use.
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Check the tag matches manifest.json
+        run: |
+          v=$(node -p "require('./manifest.json').version")
+          if [ "$v" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME but manifest.json says $v" >&2
+            exit 1
+          fi
+      - run: npm run dist
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes

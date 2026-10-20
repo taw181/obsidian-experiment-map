@@ -9,6 +9,7 @@ import { noteName } from '../core/notes.js';
 import { layoutKeys, legacyLayoutKeys } from './elements.js';
 import { PRACTICE_CONFIG_PATH } from '../core/guide.js';
 import { loadLocal, saveLocal } from './local.js';
+import { GuideView, GUIDE_VIEW_TYPE, startGuide } from './guide-view.js';
 
 const DEFAULT_SETTINGS = { configPath: DEFAULT_CONFIG_PATH };
 
@@ -27,10 +28,13 @@ export default class ExperimentMapPlugin extends Plugin {
     this.hasPractice = false;
 
     this.registerView(VIEW_TYPE, leaf => new MapView(leaf, this));
+    this.registerView(GUIDE_VIEW_TYPE, leaf => new GuideView(leaf, this));
+    this.startGuide = () => startGuide(this);
     this.addRibbonIcon('map', 'Open experiment map', () => this.openMap());
     this.addCommand({ id: 'open', name: 'Open', callback: () => this.openMap() });
     this.addCommand({ id: 'sync', name: 'Sync', callback: () => this.sync() });
     this.addCommand({ id: 'setup-vault', name: 'Set up this vault', callback: () => setupVault(this) });
+    this.addCommand({ id: 'start-guide', name: 'Start getting started guide', callback: () => this.startGuide() });
     registerEditCommands(this);
 
     this.registerEvent(this.app.vault.on('rename', (file, oldPath) => this.onRename(file, oldPath)));

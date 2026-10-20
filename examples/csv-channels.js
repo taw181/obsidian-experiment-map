@@ -43,12 +43,13 @@ module.exports = {
   },
 
   parse(text, { options }) {
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    const header = splitCsvLine(lines.shift() ?? '').map(h => h.toLowerCase());
+    // Keep each row's line number (counting blank lines) for its source link.
+    const lines = text.split('\n').map((l, i) => ({ text: l.trim(), line: i + 1 })).filter(l => l.text);
+    const header = splitCsvLine(lines.shift()?.text ?? '').map(h => h.toLowerCase());
     const col = name => header.indexOf(name);
     const base = String(options.file).split('/').pop();
-    const channels = lines.map((line, i) => {
-      const cells = splitCsvLine(line);
+    const channels = lines.map(({ text: row, line }) => {
+      const cells = splitCsvLine(row);
       const get = name => (col(name) >= 0 ? cells[col(name)] ?? '' : '');
       const address = get('address') || null;
       return {
@@ -59,7 +60,7 @@ module.exports = {
         unresolved: address ? undefined : 'no address in the CSV',
         comment: get('comment'),
         disabled: [],
-        source: { label: `${base}:${i + 2}`, url: null },
+        source: { label: `${base}:${line}`, url: null },
       };
     }).filter(ch => ch.name);
     return { channels, boards: [], appendix: '' };

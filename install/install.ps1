@@ -118,14 +118,26 @@ if ($WithClaude) {
   Copy-Item -LiteralPath (Join-Path $Tmp 'SKILL.md') -Destination (Join-Path $SkillDir 'SKILL.md') -Force
 
   # The CLAUDE.md block: replaced in place, or appended. Nothing outside the
-  # markers changes, and the file keeps its line endings.
+  # markers changes: the file keeps its line endings and any UTF-8 BOM, and a
+  # file that isn't UTF-8 (e.g. saved as ANSI) is left alone.
   $Utf8 = New-Object Text.UTF8Encoding $false
   $Md = Join-Path $Vault 'CLAUDE.md'
   $Snippet = [IO.File]::ReadAllText((Join-Path $Tmp 'CLAUDE-snippet.md')) -replace "`r`n", "`n"
+  $Text = $null
+  if (Test-Path -LiteralPath $Md) {
+    $Bytes = [IO.File]::ReadAllBytes($Md)
+    $Bom = ($Bytes.Length -ge 3 -and $Bytes[0] -eq 0xEF -and $Bytes[1] -eq 0xBB -and $Bytes[2] -eq 0xBF)
+    $Skip = if ($Bom) { 3 } else { 0 }
+    try {
+      $Text = (New-Object Text.UTF8Encoding $false, $true).GetString($Bytes, $Skip, $Bytes.Length - $Skip)
+    } catch {
+      Write-Host "Warning: $Md is not saved as UTF-8, so it was not changed; save it as UTF-8 and run the script again to add the Experiment map block." -ForegroundColor Yellow
+    }
+    if ($Bom) { $Utf8 = New-Object Text.UTF8Encoding $true }
+  }
   if (-not (Test-Path -LiteralPath $Md)) {
     [IO.File]::WriteAllText($Md, $Snippet, $Utf8)
-  } else {
-    $Text = [IO.File]::ReadAllText($Md)
+  } elseif ($null -ne $Text) {
     $Nl = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
     $Block = $Snippet.TrimEnd("`n") -replace "`n", $Nl
     $s = $Text.IndexOf($Start)

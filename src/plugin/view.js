@@ -86,9 +86,12 @@ export class MapView extends ItemView {
   }
 
   isMapFile(path) {
+    // Checked first: with no map yet there is no config, and a Config.md that
+    // arrives (git pull, made by hand) must still bring the view to life.
+    if (path === this.plugin.settings.configPath) return true;
     const c = this.plugin.config;
     if (!c) return false;
-    return path === this.plugin.settings.configPath || path.startsWith(`${c.components_folder}/`) || path.startsWith(`${c.models_folder}/`);
+    return path.startsWith(`${c.components_folder}/`) || path.startsWith(`${c.models_folder}/`);
   }
 
   scheduleRefresh(delay = 300) {

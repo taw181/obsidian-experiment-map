@@ -14,6 +14,9 @@ in the test vault.
   `Experiment map/Config.md`, `Components/`, `Models/` and
   `Experiment map/README.md`, and the map opens empty. Run "Experiment map: Set
   up this vault" again: it says the vault is already set up and changes nothing.
+- [ ] **Config.md arriving later.** In another empty vault, open the map (empty
+  state), then copy a `Config.md` into `Experiment map/` from outside Obsidian
+  (as a git pull would). Within a second the map replaces the empty state.
 - [ ] **First components.** With **+**, add a laser, then (with the laser
   selected) an AOM, then a destination. Each box appears in its location's
   group, linked to the previous one, with no ⚠.

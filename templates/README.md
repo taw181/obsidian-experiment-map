@@ -4,6 +4,11 @@ A clickable map of the lab: lasers, beam paths, modulators, shutters, fibres,
 and the electronics and control channels that drive them. Open it with the map
 icon in the left ribbon or "Experiment map: Open".
 
+> [!tip] New here?
+> Run **Experiment map: Start getting started guide** from the command palette.
+> It walks you through building a small practice map, in its own folder, and
+> ticks each step off as you go.
+
 > [!warning] Not yet tested on mobile
 > The map has only been tried in desktop Obsidian. On a phone or tablet it may be
 > slow or misbehave; the notes themselves are fine to read and edit anywhere.

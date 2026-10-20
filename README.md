@@ -66,6 +66,14 @@ particular release.
 
 ## Your first map
 
+New to the map? Run **Experiment map: Start getting started guide** from the
+command palette. A panel in the right sidebar walks you through building a small
+practice map, step by step, in its own folder (`Experiment map practice/`) that
+never touches your lab's map. It ticks each step off as you do it. Afterwards
+the **Practice** switch in the map's toolbar shows it again.
+
+Or, straight into your own map:
+
 1. Press **+** in the map's toolbar (or run "Experiment map: New component").
    Make a laser: type `laser`, a location such as `Laser table`.
 2. Select the laser's box and press **+** again: the new component is fed from

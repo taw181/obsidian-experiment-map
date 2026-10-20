@@ -214,7 +214,8 @@ before the first `/`. `disabled` is a list of reasons (`["commented out"]`; a
 string is accepted), empty when usable. `source` is `{label, url}`, e.g. a file
 and line. `extra` maps other short values (`{range: "0 to 5"}`). Every field is
 coerced to its expected type, so a sloppy script cannot break the graph. For a
-repeated name, the first declaration with no `disabled` reasons is the primary.
+repeated name, the declaration with the fewest `disabled` reasons is the
+primary (the first one on a tie).
 `boards` (`[{name, address, comment}]`) and `appendix` (Markdown for the end of
 the channel page) are optional. [`examples/csv-channels.js`](../examples/csv-channels.js)
 is a complete example that reads a CSV in the vault.

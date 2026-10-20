@@ -26,16 +26,17 @@ export function loadSourceScript(text, path) {
   return s;
 }
 
-// Channels grouped by name per experiment. The primary declaration is the first
-// usable one (empty `disabled`); the channel's unit is the controller whose
-// address is the primary's board.
+// Channels grouped by name per experiment. The primary declaration is the one
+// with the fewest `disabled` reasons, the first on a tie (so the first usable
+// one, if any); the channel's unit is the controller whose address is the
+// primary's board.
 export function channelTables(sources, boardOwner) {
   const tables = {};
   for (const [exp, src] of Object.entries(sources)) {
     const table = {};
     for (const ch of src.parsed.channels) (table[ch.name] ??= { name: ch.name, decls: [], usedBy: [] }).decls.push(ch);
     for (const e of Object.values(table)) {
-      e.primary = e.decls.find(d => !d.disabled.length) ?? e.decls[0];
+      e.primary = e.decls.reduce((best, d) => (d.disabled.length < best.disabled.length ? d : best));
       e.unit = e.primary.board ? boardOwner[exp]?.get(normAddress(e.primary.board)) ?? null : null;
     }
     tables[exp] = table;

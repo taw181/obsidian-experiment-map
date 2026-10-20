@@ -7,6 +7,7 @@ import { mentionsFor } from './obsidian-io.js';
 import { chainOf } from '../core/trace.js';
 import { applyLegacy, gridSize, snap } from '../core/layout.js';
 import { setupVault } from './setup.js';
+import { PRACTICE_CONFIG_PATH } from '../core/guide.js';
 
 export const VIEW_TYPE = 'experiment-map';
 
@@ -82,13 +83,27 @@ export class MapView extends ItemView {
     this.errorEl.createSpan({ text: 'This vault has no experiment map yet. ' });
     const b = this.errorEl.createEl('button', { text: 'Set up', cls: 'em-chip' });
     b.addEventListener('click', () => setupVault(this.plugin));
+    const t = this.errorEl.createEl('button', { text: 'Try the practice map', cls: 'em-chip' });
+    t.addEventListener('click', () => this.plugin.startGuide());
+    if (this.plugin.hasPractice) {
+      const p = this.errorEl.createEl('button', { text: 'Show the practice map', cls: 'em-chip' });
+      p.addEventListener('click', () => this.plugin.showMap('practice'));
+    }
     this.errorEl.removeClass('is-hidden');
+  }
+
+  // Another map is about to be drawn: forget this one's viewport, selection and chips.
+  resetForMap() {
+    this.fitted = false;
+    this.selected = null;
+    this.state.experiments = null;
+    this.knownExperiments = [];
   }
 
   isMapFile(path) {
     // Checked first: with no map yet there is no config, and a Config.md that
     // arrives (git pull, made by hand) must still bring the view to life.
-    if (path === this.plugin.settings.configPath) return true;
+    if (path === this.plugin.settings.configPath || path === PRACTICE_CONFIG_PATH) return true;
     const c = this.plugin.config;
     if (!c) return false;
     return path.startsWith(`${c.components_folder}/`) || path.startsWith(`${c.models_folder}/`);
@@ -226,6 +241,13 @@ export class MapView extends ItemView {
       return b;
     };
     const toggled = () => { this.applyVisibility(); this.renderToolbar(); };
+
+    if (this.plugin.hasPractice) {
+      const maps = bar.createDiv('em-group');
+      maps.createSpan({ text: 'Map', cls: 'em-muted' });
+      chip(maps, 'Real', this.plugin.activeMap === 'real', () => this.plugin.showMap('real'), 'Your lab\'s map');
+      chip(maps, 'Practice', this.plugin.activeMap === 'practice', () => this.plugin.showMap('practice'), 'The getting-started practice map');
+    }
 
     const layers = bar.createDiv('em-group');
     layers.createSpan({ text: 'Layers', cls: 'em-muted' });

@@ -25,7 +25,10 @@ export async function setupVault(plugin) {
   await folder(normalizePath(DEFAULT_CONFIG.components_folder));
   await folder(normalizePath(DEFAULT_CONFIG.models_folder));
   await file(normalizePath(dir ? `${dir}/README.md` : 'README.md'), readmeTemplate);
-  new Notice(created.length ? `Experiment map: created ${created.join(', ')}` : 'Experiment map: this vault is already set up');
+  new Notice(created.length
+    ? `Experiment map: created ${created.join(', ')}. To learn the map, run "Experiment map: Start getting started guide".`
+    : 'Experiment map: this vault is already set up');
+  plugin.setActiveMap('real');
   try {
     await plugin.loadGraph();
   } catch (e) {

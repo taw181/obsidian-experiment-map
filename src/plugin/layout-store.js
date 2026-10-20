@@ -80,6 +80,22 @@ export class LayoutStore {
     this.legacy = legacy;
   }
 
+  // Writes a scheduled save now, before the path changes to another map.
+  async flush() {
+    if (!this.timer) return;
+    clearTimeout(this.timer);
+    await this.save();
+  }
+
+  // Forgets unsaved moves and the cached file, for a map that was reset.
+  discard() {
+    clearTimeout(this.timer);
+    this.timer = null;
+    this.pending.clear();
+    this.disk = {};
+    this.loaded = false;
+  }
+
   // A broken file is only replaced by a drag (force), never by a rename.
   scheduleSave(force) {
     if (this.broken && !force) return;

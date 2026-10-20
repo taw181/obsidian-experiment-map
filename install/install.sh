@@ -20,7 +20,16 @@ START='<!-- experiment-map:start -->'
 END='<!-- experiment-map:end -->'
 
 usage() {
-  sed -n '2,10p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'
+  cat <<'USAGE'
+Install or update the Experiment map plugin in an Obsidian vault (macOS, Linux).
+
+  sh install.sh [VAULT] [--claude | --no-claude] [--version X.Y.Z] [--from DIR_OR_URL]
+
+VAULT defaults to the current folder. Re-run it to update. --claude also
+installs the Claude skill (and the CLI it uses); once installed, updates keep
+it current. --from takes the files from a folder or URL instead of the
+latest GitHub release (for testing a local build).
+USAGE
 }
 
 vault=
@@ -47,7 +56,7 @@ if [ ! -d "$vault/.obsidian" ]; then
   echo "Not an Obsidian vault: $vault has no .obsidian folder. Open this folder in Obsidian first, or pass the vault's path." >&2
   exit 1
 fi
-vault=$(cd "$vault" && pwd)
+vault=$(CDPATH= cd -- "$vault" && pwd)
 
 if [ -n "$from" ]; then
   base=${from%/}
@@ -58,7 +67,16 @@ else
 fi
 
 tmp=$(mktemp -d 2>/dev/null || mktemp -d -t experiment-map)
-trap 'rm -rf "$tmp"' EXIT INT TERM
+trap 'rm -rf "$tmp"' EXIT
+trap 'echo >&2; echo "Stopped. Nothing more was changed." >&2; exit 130' INT TERM
+
+# put SRC DEST: copy one file into the vault, or stop with a plain message.
+put() {
+  cp "$1" "$2" 2>"$tmp/err" || {
+    echo "Could not write $2 ($(tail -n 1 "$tmp/err")). Re-run the script once that is fixed." >&2
+    exit 3
+  }
+}
 
 fail_download() {
   echo "Download failed: $1 ($2). Nothing was changed." >&2
@@ -114,29 +132,33 @@ grep -q "\"id\"[[:space:]]*:[[:space:]]*\"$PLUGIN_ID\"" "$tmp/manifest.json" ||
   fail_download manifest.json "it is not the Experiment map plugin's manifest"
 new=$(manifest_version "$tmp/manifest.json")
 
-mkdir -p "$plugin_dir"
-for f in main.js manifest.json styles.css; do cp "$tmp/$f" "$plugin_dir/$f"; done
+mkdir -p "$plugin_dir" || exit 3
+for f in main.js manifest.json styles.css; do put "$tmp/$f" "$plugin_dir/$f"; done
 
 if [ "$claude" = yes ]; then
-  cp "$tmp/cli.js" "$plugin_dir/cli.js"
-  mkdir -p "$skill_dir"
-  cp "$tmp/SKILL.md" "$skill_dir/SKILL.md"
+  put "$tmp/cli.js" "$plugin_dir/cli.js"
+  mkdir -p "$skill_dir" || exit 3
+  put "$tmp/SKILL.md" "$skill_dir/SKILL.md"
 
   # The CLAUDE.md block: replaced in place, or appended. Nothing outside the
   # markers changes, and a file with CRLF line endings keeps them.
   md="$vault/CLAUDE.md"
   if [ ! -f "$md" ]; then
-    cp "$tmp/CLAUDE-snippet.md" "$md"
+    put "$tmp/CLAUDE-snippet.md" "$md"
   elif awk -v start="$START" -v end="$END" '!s && index($0, start) { s = 1; next } s && index($0, end) { found = 1; exit } END { exit !found }' "$md"; then
-    awk -v snip="$tmp/CLAUDE-snippet.md" -v start="$START" -v end="$END" '
+    eol=1
+    [ "$(tail -c 1 "$md" | od -An -c | tr -d ' ')" = '\n' ] || eol=0
+    awk -v snip="$tmp/CLAUDE-snippet.md" -v start="$START" -v end="$END" -v eol="$eol" '
+      function out(t) { printf "%s%s", (n++ ? "\n" : ""), t }
       !done && !skip && index($0, start) {
         cr = ($0 ~ /\r$/) ? "\r" : ""
-        while ((getline line < snip) > 0) { sub(/\r$/, "", line); print line cr }
+        while ((getline line < snip) > 0) { sub(/\r$/, "", line); out(line cr) }
         skip = 1
       }
       skip { if (index($0, end)) { skip = 0; done = 1 } ; next }
-      { print }
-    ' "$md" >"$tmp/CLAUDE.md" && cat "$tmp/CLAUDE.md" >"$md"
+      { out($0) }
+      END { if (eol && n) printf "\n" }
+    ' "$md" >"$tmp/CLAUDE.md" && put "$tmp/CLAUDE.md" "$md"
   elif grep -qF "$START" "$md"; then
     echo "Warning: $md has '$START' but no '$END' after it; fix the block by hand. CLAUDE.md was not changed." >&2
   else

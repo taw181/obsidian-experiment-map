@@ -25,9 +25,9 @@ export class LayoutStore {
     }
   }
 
-  async read() {
+  async read(path = this.path) {
     const adapter = this.app.vault.adapter;
-    return (await adapter.exists(this.path)) ? adapter.read(this.path) : null;
+    return (await adapter.exists(path)) ? adapter.read(path) : null;
   }
 
   async load() {
@@ -105,15 +105,18 @@ export class LayoutStore {
 
   async save() {
     this.timer = null;
-    if (!this.path) return;
-    const text = await this.read();
+    // Taken before the read: if the map switches meanwhile, these moves still
+    // go to the file (and keep list) of the map they were made on.
+    const { path, keep, legacy } = this;
+    if (!path) return;
+    const text = await this.read(path);
     const r = parseLayout(text);
     this.disk = r.positions;
-    const merged = applyLegacy(this.all(), this.legacy);
+    const merged = applyLegacy(this.all(), legacy);
     this.pending.clear();
     this.disk = merged;
     this.broken = false;
-    const out = serializeLayout(merged, this.keep);
-    if (out !== text) await this.app.vault.adapter.write(this.path, out);
+    const out = serializeLayout(merged, keep);
+    if (out !== text) await this.app.vault.adapter.write(path, out);
   }
 }

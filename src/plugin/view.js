@@ -120,6 +120,7 @@ export class MapView extends ItemView {
     try {
       loaded = await this.plugin.loadGraph();
     } catch (e) {
+      if (e.stale) return;
       if (e.missing) {
         this.showEmptyState();
         return;
@@ -158,8 +159,14 @@ export class MapView extends ItemView {
       this.cy.elements().remove();
       this.cy.add(els);
     });
-    if (!this.fitted) {
+    if (!this.fitted && els.length) {
+      // Fit once there is something to fit (a new practice map starts empty),
+      // without blowing a map of one or two boxes up to full size.
       this.cy.fit(undefined, 40);
+      if (this.cy.zoom() > 1) {
+        this.cy.zoom(1);
+        this.cy.center();
+      }
       this.fitted = true;
     } else {
       this.cy.viewport({ zoom, pan });

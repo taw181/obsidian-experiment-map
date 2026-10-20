@@ -41,7 +41,7 @@ export default class ExperimentMapPlugin extends Plugin {
     this.registerEvent(this.app.vault.on('modify', file => {
       if (file.path === this.layout.path) this.layout.load().then(() => this.refreshViews());
     }));
-    this.app.workspace.onLayoutReady(() => this.loadGraph().catch(e => { if (!e.missing) console.error('experiment-map', e); }));
+    this.app.workspace.onLayoutReady(() => this.loadGraph().catch(e => { if (!e.missing && !e.stale) console.error('experiment-map', e); }));
   }
 
   configPath() {
@@ -51,8 +51,15 @@ export default class ExperimentMapPlugin extends Plugin {
   async loadGraph() {
     this.hasPractice = await this.app.vault.adapter.exists(PRACTICE_CONFIG_PATH);
     // The practice folder went away (a pull, a delete): back to the real map.
-    if (this.activeMap === 'practice' && !this.hasPractice) this.setActiveMap('real');
-    const inputs = await loadInputs(this.io, { configPath: this.configPath(), offline: true });
+    if (this.activeMap === 'practice' && !this.hasPractice) {
+      this.layout.discard();
+      this.setActiveMap('real');
+    }
+    const configPath = this.configPath();
+    const inputs = await loadInputs(this.io, { configPath, offline: true });
+    // The map was switched while this one loaded; the load for the new one is
+    // on its way, and this result must not replace it.
+    if (configPath !== this.configPath()) throw Object.assign(new Error('map switched while loading'), { stale: true });
     const { graph } = buildOutputs(inputs);
     this.config = inputs.config;
     this.channelSources = inputs.channelSources;

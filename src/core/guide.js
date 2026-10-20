@@ -13,6 +13,7 @@ const VCO = 'Practice VCO';
 const BOARD = 'Practice control board';
 const PC = 'Practice PC';
 const FIBRE = 'Practice fibre';
+const MODEL = 'Practice AOM model';
 
 const comp = (g, name) => g.components[name] ?? null;
 const units = (g, name, kind) => (comp(g, name)?.inputs[kind] ?? []).map(x => x.unit).filter(Boolean);
@@ -37,6 +38,7 @@ export const STEPS = [
     id: 'start',
     title: 'Laser to chamber',
     subjects: [LASER, CHAMBER],
+    fields: [[LASER, 'type', 'laser'], [LASER, 'location', 'Laser table'], [CHAMBER, 'type', 'destination'], [CHAMBER, 'fed', LASER]],
     tasks: [
       {
         id: 'laser',
@@ -58,6 +60,7 @@ export const STEPS = [
     id: 'aom',
     title: 'Put an AOM in between',
     subjects: [AOM, CHAMBER],
+    fields: [[AOM, 'type', 'aom'], [AOM, 'location', 'Laser table'], [AOM, 'fed', LASER], [CHAMBER, 'only', AOM]],
     tasks: [
       {
         id: 'aom',
@@ -78,6 +81,11 @@ export const STEPS = [
     id: 'controls',
     title: 'Add the controls',
     subjects: [VCO, BOARD, PC, AOM],
+    fields: [
+      [VCO, 'type', 'rf_source'], [VCO, 'location', 'Laser table'],
+      [BOARD, 'type', 'controller'], [BOARD, 'location', 'Electronics rack'],
+      [PC, 'type', 'controller'], [PC, 'location', 'Electronics rack'],
+    ],
     tasks: [
       {
         id: 'vco',
@@ -120,6 +128,7 @@ export const STEPS = [
     id: 'tables',
     title: 'Move the chamber to its own table',
     subjects: [CHAMBER],
+    fields: [[CHAMBER, 'location', 'Chamber table']],
     tasks: [
       {
         id: 'move',
@@ -134,6 +143,7 @@ export const STEPS = [
     id: 'fibre',
     title: 'Fibre the beam across',
     subjects: [FIBRE, CHAMBER],
+    fields: [[FIBRE, 'type', 'fibre'], [FIBRE, 'location', 'Laser table'], [FIBRE, 'fed', AOM], [FIBRE, 'output_location', 'Chamber table'], [CHAMBER, 'only', FIBRE]],
     tasks: [
       {
         id: 'fibre',
@@ -159,6 +169,7 @@ export const STEPS = [
     id: 'model',
     title: 'Make a model from the AOM',
     subjects: [AOM],
+    fields: [[AOM, 'model', MODEL]],
     tasks: [
       {
         id: 'props',
@@ -170,15 +181,12 @@ export const STEPS = [
       },
       {
         id: 'model',
-        text: `With the AOM's note open, open the command palette (Ctrl/Cmd+P) and run **Experiment map: Make model from this component**. Name the model **${AOM} model**.`,
-        check: g => {
-          const m = comp(g, AOM)?.model;
-          return Boolean(m && g.models[m]?.props.type === 'aom');
-        },
+        text: `With the AOM's note open, open the command palette (Ctrl/Cmd+P) and run **Experiment map: Make model from this component**. Name the model **${MODEL}**.`,
+        check: g => comp(g, AOM)?.model === MODEL && g.models[MODEL]?.props.type === 'aom',
       },
     ],
     why: 'A model note holds what every unit of one device shares: its type, specs and manuals. The AOM now links to the model and inherits from it, so a second AOM of the same part number needs only `model`, a location and its connections. Connections and `location` are never inherited.',
-    lookFor: `The AOM's note now has \`model: "[[${AOM} model]]"\` in place of the moved properties. Click the AOM on the map: the details panel shows \`type\` and \`freq_shift_mhz\` greyed out, marked *from ${AOM} model*. The model's note is in \`${PRACTICE_DIR}/Models\`.`,
+    lookFor: `The AOM's note now has \`model: "[[${MODEL}]]"\` in place of the moved properties. Click the AOM on the map: the details panel shows \`type\` and \`freq_shift_mhz\` greyed out, marked *from ${MODEL}*. The model's note is in \`${PRACTICE_DIR}/Models\`.`,
   },
 ];
 
@@ -221,9 +229,34 @@ const REWORD = [
   [/^no experiment \(sources/, s => `**${s}** needs \`experiment: [practice]\`.`],
   [/^unknown experiment/, s => `**${s}**: the practice map's only experiment is \`practice\`.`],
 ];
+const KNOCK_ON = /^has no inputs|nothing upstream/;
+const loose = v => text(v).replace(/\s+/g, ' ').toLowerCase();
+const beamLine = from => `\`beam_from: ["[[${from}]]"]\``;
 
-// Hints for what is wrong with the step's components: a near-miss name, or the
-// map's own problems in the step's words.
+// What is off in one of the step's expected values. Only differences the user
+// has clearly made: a wrong type, a value that matches only ignoring case and
+// spaces, a missing or extra beam input. A value not yet changed (the chamber's
+// location before step 4) gives nothing.
+function fieldHint(g, [name, key, want]) {
+  const c = comp(g, name);
+  if (!c) return null;
+  if (key === 'type') return c.props.type && c.props.type !== want ? `**${name}** should be type **${want}**, not ${c.props.type}. Change \`type\` in its note.` : null;
+  if (key === 'fed') {
+    const u = units(g, name, 'beam');
+    if (!u.length) return `**${name}** isn't fed by anything yet. Set ${beamLine(want)} in its note (pressing **+** with **${want}** selected writes this for you).`;
+    return u.includes(want) ? null : `**${name}** should be fed by **${want}**: set ${beamLine(want)} in its note.`;
+  }
+  if (key === 'only') {
+    const u = units(g, name, 'beam');
+    return u.includes(want) && u.length > 1 ? `**${name}** should be fed only by **${want}**: remove the other links, so it reads ${beamLine(want)}.` : null;
+  }
+  if (key === 'model') return c.model && c.model !== want ? `The guide expects the model to be called **${want}**, but yours is **${c.model}**. Rename the model note to match.` : null;
+  const have = text(c.props[key]);
+  return have && have !== want && loose(have) === loose(want) ? `The guide expects \`${key}: ${want}\` on **${name}**, but it has **${have}**. Change it to match exactly.` : null;
+}
+
+// Hints for what is wrong with the step's components: a near-miss name, an
+// expected value that is off, or the map's own problems in the step's words.
 export function hintsFor(stepIndex, graph) {
   const step = STEPS[stepIndex];
   if (!step) return [];
@@ -231,15 +264,17 @@ export function hintsFor(stepIndex, graph) {
   const names = Object.keys(graph.components);
   for (const s of step.subjects) {
     if (!graph.components[s]) {
-      const near = names.find(n => n.trim().toLowerCase() === s.toLowerCase());
+      const near = names.find(n => loose(n) === loose(s));
       if (near) out.push(`The guide expects a note called **${s}**, but yours is **${near}**. Rename the note to match.`);
       continue;
     }
+    const fields = (step.fields ?? []).filter(f => f[0] === s).map(f => fieldHint(graph, f)).filter(Boolean);
+    out.push(...fields);
     const own = graph.problems.filter(x => x.subject === s);
-    // A broken link also leaves the component with no inputs and nothing to
-    // inherit an experiment from; say only the cause.
-    const knockOn = p => own.length > 1 && /^has no inputs|nothing upstream/.test(p.message);
-    for (const p of own.filter(x => !knockOn(x))) {
+    // A broken or missing link also leaves the component with no inputs and
+    // nothing to inherit an experiment from; say only the cause.
+    const caused = fields.length > 0 || own.some(x => !KNOCK_ON.test(x.message));
+    for (const p of own.filter(x => !(caused && KNOCK_ON.test(x.message)))) {
       const r = REWORD.find(([re]) => re.test(p.message));
       out.push(r ? r[1](s, p.message) : `**${s}**: ${p.message}`);
     }

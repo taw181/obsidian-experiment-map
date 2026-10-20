@@ -423,9 +423,12 @@ makes the panel say the practice map has changed and offer **Start over**.
 **Panel.** Header and "Practice map · step N of 6 · show practice map"; done
 steps one line each; the current step with **Do** (each task ticked on its
 own), **Why**, **Look for** and hints; later steps by title. Hints: a near-miss
-note name (same name ignoring case and spaces), and the map's problems for the
-step's components, reworded where the fix is known; "has no inputs" and
-"nothing upstream" are left out when the component has another problem. After
+note name (the same ignoring case and runs of spaces); an expected value that is
+off (a wrong `type`; a location that matches only ignoring case and spaces; no
+beam input, or one besides the expected one; a model not named *Practice AOM
+model*), never for a value the user hasn't changed yet; and the map's problems
+for the step's components, reworded where the fix is known. "has no inputs" and
+"nothing upstream" are left out when another hint or problem gives the cause. After
 step 6: what was built, where the real map and its how-to note are (or how to
 set one up), and how to view the practice map again.
 

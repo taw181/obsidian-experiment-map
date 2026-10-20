@@ -1,4 +1,4 @@
-import { ItemView, MarkdownRenderer, Modal, Setting } from 'obsidian';
+import { Component, ItemView, MarkdownRenderer, Modal, Setting } from 'obsidian';
 import { loadInputs, buildOutputs } from '../core/sync.js';
 import { STEPS, PRACTICE_DIR, PRACTICE_CONFIG_PATH, advance, currentStep, isFinished, isTaskDone, missingCreated, hintsFor } from '../core/guide.js';
 import { resetPractice } from './practice.js';
@@ -81,6 +81,8 @@ export class GuideView extends ItemView {
     this.plugin = plugin;
     this.timer = null;
     this.renders = 0;
+    // Owns the rendered Markdown of the panel on screen; replaced on each refresh.
+    this.shown = null;
   }
 
   getViewType() { return GUIDE_VIEW_TYPE; }
@@ -118,15 +120,16 @@ export class GuideView extends ItemView {
     }
   }
 
-  md(el, text) {
-    return MarkdownRenderer.render(this.app, text, el, PRACTICE_CONFIG_PATH, this);
-  }
-
   // Builds the panel off-screen, then swaps it in, so overlapping refreshes
   // never interleave their output.
   async refresh() {
     const id = ++this.renders;
     const graph = await this.loadPractice();
+    if (id !== this.renders) return;
+    // Each refresh's Markdown belongs to its own child component, unloaded
+    // when a later refresh replaces it.
+    const owner = this.addChild(new Component());
+    const md = (el, text) => MarkdownRenderer.render(this.app, text, el, PRACTICE_CONFIG_PATH, owner);
     let progress = loadLocal(this.app, 'guide');
     const root = createDiv();
     root.createEl('h4', { text: 'Getting started', cls: 'em-guide-title' });
@@ -134,14 +137,14 @@ export class GuideView extends ItemView {
     if (!graph || !progress) {
       root.createEl('p', { text: 'Build a small practice map, step by step, to learn how the experiment map works. It goes in its own folder and never touches your lab\'s map.' });
       this.button(root, 'Start', () => startGuide(this.plugin), true);
-      return this.swap(id, root);
+      return this.swap(id, root, owner);
     }
 
     const missing = missingCreated(progress, graph);
     if (missing.length) {
       root.createEl('p', { cls: 'em-guide-hint', text: `The practice map has changed since you started (someone may have reset it): ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} gone.` });
       this.button(root, 'Start over', () => begin(this.plugin, true), true);
-      return this.swap(id, root);
+      return this.swap(id, root, owner);
     }
 
     const next = advance(progress, graph);
@@ -168,23 +171,23 @@ export class GuideView extends ItemView {
         const done = isTaskDone(progress, step, task);
         const row = box.createDiv(`em-guide-task${done ? ' is-done' : ''}`);
         row.createSpan({ cls: 'em-guide-mark', text: done ? '✓' : '☐' });
-        renders.push(this.md(row.createDiv('em-guide-text'), task.text));
+        renders.push(md(row.createDiv('em-guide-text'), task.text));
       }
       box.createDiv({ cls: 'em-guide-label', text: 'Why' });
-      renders.push(this.md(box.createDiv('em-guide-text'), step.why));
+      renders.push(md(box.createDiv('em-guide-text'), step.why));
       box.createDiv({ cls: 'em-guide-label', text: 'Look for' });
-      renders.push(this.md(box.createDiv('em-guide-text'), step.lookFor));
-      for (const h of hintsFor(i, graph)) renders.push(this.md(box.createDiv('em-guide-hint'), `⚠ ${h}`));
+      renders.push(md(box.createDiv('em-guide-text'), step.lookFor));
+      for (const h of hintsFor(i, graph)) renders.push(md(box.createDiv('em-guide-hint'), `⚠ ${h}`));
     }
-    if (cur === STEPS.length) await this.renderFinished(root, renders);
+    if (cur === STEPS.length) await this.renderFinished(root, renders, md);
     await Promise.all(renders);
-    this.swap(id, root);
+    this.swap(id, root, owner);
   }
 
-  async renderFinished(root, renders) {
+  async renderFinished(root, renders, md) {
     const box = root.createDiv('em-guide-current');
     box.createEl('h5', { text: 'Done!' });
-    renders.push(this.md(box.createDiv('em-guide-text'), "You've built the whole practice map: a laser feeding a chamber on another table through an AOM and a fibre, the VCO, control board and PC that drive the AOM, and a model for the AOM."));
+    renders.push(md(box.createDiv('em-guide-text'), "You've built the whole practice map: a laser feeding a chamber on another table through an AOM and a fibre, the VCO, control board and PC that drive the AOM, and a model for the AOM."));
     const configPath = this.plugin.settings.configPath;
     const dir = configPath.split('/').slice(0, -1).join('/');
     const p = box.createEl('p');
@@ -207,8 +210,13 @@ export class GuideView extends ItemView {
     b.addEventListener('click', onClick);
   }
 
-  swap(id, root) {
-    if (id !== this.renders) return;
+  swap(id, root, owner) {
+    if (id !== this.renders) {
+      this.removeChild(owner);
+      return;
+    }
+    if (this.shown) this.removeChild(this.shown);
+    this.shown = owner;
     this.contentEl.empty();
     this.contentEl.appendChild(root);
   }

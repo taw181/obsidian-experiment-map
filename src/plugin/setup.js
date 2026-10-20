@@ -28,7 +28,10 @@ export async function setupVault(plugin) {
   new Notice(created.length
     ? `Experiment map: created ${created.join(', ')}. To learn the map, run "Experiment map: Start getting started guide".`
     : 'Experiment map: this vault is already set up');
-  plugin.setActiveMap('real');
+  if (plugin.activeMap !== 'real') {
+    await plugin.layout.flush();
+    plugin.setActiveMap('real');
+  }
   try {
     await plugin.loadGraph();
   } catch (e) {

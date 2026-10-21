@@ -375,7 +375,8 @@ export class MapView extends ItemView {
     row(line(cfg.control_color, 'dotted'), 'control (layer: Control)');
     row(box('is-optical'), 'optical component');
     row(box('is-electronics'), 'electronics');
-    row(box('is-round'), 'destination');
+    const round = Object.keys(cfg.types).filter(t => cfg.types[t]?.shape === 'round');
+    if (round.length) row(box('is-round'), round.join(', '));
     row(box('is-broken'), 'status: broken');
     row(box('is-problem'), '⚠ has a problem');
   }

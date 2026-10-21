@@ -13,7 +13,7 @@ types:
   shutter: {category: optical, color: "#c06a6a"}
   fibre: {category: optical, color: "#5a9a5a", link: true, template: fibre}
   lock: {category: optical, color: "#9a8a5a"}
-  destination: {category: optical, color: "#8a8a8a", shape: round, subtitle: false}
+  chamber: {category: optical, color: "#8a8a8a", shape: round, subtitle: false}
   beam_splitter: {category: optical, color: "#7aa0b0"}
   optics: {category: optical, color: "#a09a80"}
   meter: {category: optical, color: "#6f9f8f"}

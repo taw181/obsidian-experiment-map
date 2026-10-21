@@ -18,7 +18,7 @@ in the test vault.
   state), then copy a `Config.md` into `Experiment map/` from outside Obsidian
   (as a git pull would). Within a second the map replaces the empty state.
 - [ ] **First components.** With **+**, add a laser, then (with the laser
-  selected) an AOM, then a destination. Each box appears in its location's
+  selected) an AOM, then a chamber. Each box appears in its location's
   group, linked to the previous one, with no ⚠.
 - [ ] **Controller without a channel.** Add a controller and give the AOM
   `control_from: ["[[<controller>]]"]`, then `["[[<controller>#line 3]]"]`. The

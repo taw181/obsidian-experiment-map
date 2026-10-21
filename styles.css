@@ -57,6 +57,8 @@
 .em-guide-text { min-width: 0; overflow-wrap: anywhere; }
 .em-guide-text p { margin: 0 0 4px; }
 .em-guide-text pre { margin: 4px 0; }
+.em-guide-text ul { margin: 2px 0 4px; padding-left: 1.4em; }
+.em-guide-task-head { font-weight: var(--font-semibold); margin-bottom: 2px; }
 .em-guide-hint { margin: 8px 0 0; padding: 6px 8px; border-left: 3px solid var(--color-orange); background: rgba(var(--color-orange-rgb), 0.12); border-radius: var(--radius-s); }
 .em-guide-hint p { margin: 0; }
 .em-guide button { margin-top: 6px; }

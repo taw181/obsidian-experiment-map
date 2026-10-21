@@ -60,7 +60,7 @@ names a port or item of the component.
 | `template: <name>` | template always added when a component of this type is created |
 
 Built-in types: `laser`, `amplifier`, `aom`, `eom`, `shutter`, `fibre` (link),
-`lock`, `destination` (round, no subtitle), `rf_source`, `controller` (`laser`,
+`lock`, `chamber` (round, no subtitle), `rf_source`, `controller` (`laser`,
 `rf_source` and `controller` are sources). The starter `Config.md` adds
 `beam_splitter`, `optics`, `meter` and `slm`, and gives `fibre` the `fibre` template.
 
@@ -416,13 +416,17 @@ control board and PC; the chamber on its own table; a fibre across; a model from
 the AOM), each with tasks checked against the practice graph. The panel loads the
 practice map itself and re-checks on every change in the practice folder. Tasks
 of the current step tick when their check passes and stay ticked (later steps
-undo earlier states); a complete step moves on. A ticked task that created a
+undo earlier states); a complete step moves on. Tasks that create a component
+list the New component form's fields by their labels (**Name**, **Location**,
+**Type**, **Experiment**), and say that **+** with a component selected makes a
+new one fed from it. A ticked task that created a
 component whose note is now gone (someone else's reset arriving through git)
 makes the panel say the practice map has changed and offer **Start over**.
 
 **Panel.** Header and "Practice map · step N of 6 · show practice map"; done
-steps one line each; the current step with **Do** (each task ticked on its
-own), **Why**, **Look for** and hints; later steps by title. Hints: a near-miss
+steps one line each; the current step with **Do** (each task under its own
+heading, such as *Adding a laser*, and ticked on its own), **Why**, **Look for**
+and hints; later steps by title. Hints: a near-miss
 note name (the same ignoring case and runs of spaces); an expected value that is
 off (a wrong `type`; a location that matches only ignoring case and spaces; no
 beam input, or one besides the expected one; a model not named *Practice AOM

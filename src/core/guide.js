@@ -32,25 +32,33 @@ const onlyBeamFrom = (g, name, from) => {
   return u.length === 1 && u[0] === from;
 };
 const yaml = line => `\n\`\`\`yaml\n${line}\n\`\`\``;
+// The New component form's fields, by their labels in the form, so "type" is
+// always the field and never the verb.
+const form = rows => `\n\n${rows.map(([label, v]) => `- **${label}**: ${v}`).join('\n')}\n\nThen press **Create**.`;
+const plus = (from, first = false) => from
+  ? `Click **${from}** on the map to select it, then press **+** and choose *(no model)*. This makes a new component, fed from ${from}${first ? `; ${from} itself doesn't change` : ''}. Fill in the form:`
+  : 'Click empty space on the map so nothing is selected, then press **+** and choose *(no model)*. Fill in the form:';
 
 export const STEPS = [
   {
     id: 'start',
     title: 'Laser to chamber',
     subjects: [LASER, CHAMBER],
-    fields: [[LASER, 'type', 'laser'], [LASER, 'location', 'Laser table'], [CHAMBER, 'type', 'destination'], [CHAMBER, 'fed', LASER]],
+    fields: [[LASER, 'type', 'laser'], [LASER, 'location', 'Laser table'], [CHAMBER, 'type', 'chamber'], [CHAMBER, 'fed', LASER]],
     tasks: [
       {
         id: 'laser',
+        heading: 'Adding a laser',
         creates: LASER,
-        text: `In the map, press **+** and choose *(no model)*. Name it **${LASER}**, location **Laser table**, type **laser**, experiment **practice**. Its note opens; you can close it.`,
+        text: `In the map, press **+** and choose *(no model)*. Fill in the form:${form([['Name', LASER], ['Location', 'Laser table'], ['Type', 'laser'], ['Experiment', 'practice']])} The laser's note opens; you can close it.`,
         check: g => is(g, LASER, { type: 'laser', location: 'Laser table', experiment: 'practice' }),
       },
       {
         id: 'chamber',
+        heading: 'Adding a chamber',
         creates: CHAMBER,
-        text: `Click **${LASER}** on the map to select it, then press **+** again. Name it **${CHAMBER}**, type **destination**. The location is filled in from the laser; leave experiment blank.`,
-        check: g => is(g, CHAMBER, { type: 'destination' }) && fedBy(g, CHAMBER, 'beam', LASER),
+        text: `${plus(LASER, true)}${form([['Name', CHAMBER], ['Location', 'already filled in from the laser (Laser table)'], ['Type', 'chamber'], ['Experiment', 'leave blank']])}`,
+        check: g => is(g, CHAMBER, { type: 'chamber' }) && fedBy(g, CHAMBER, 'beam', LASER),
       },
     ],
     why: `Every box on the map is one note in \`${PRACTICE_DIR}/Components\`, and its properties say what it is and what feeds it. Because the laser was selected, **+** wrote \`beam_from: ["[[${LASER}]]"]\` into the chamber's note. A laser is a source: nothing feeds it, so it names its experiment itself, and the chamber inherits it.`,
@@ -64,12 +72,14 @@ export const STEPS = [
     tasks: [
       {
         id: 'aom',
+        heading: 'Adding an AOM',
         creates: AOM,
-        text: `Select **${LASER}** and press **+**. Name it **${AOM}**, location **Laser table**, type **aom**.`,
+        text: `${plus(LASER)}${form([['Name', AOM], ['Location', 'Laser table'], ['Type', 'aom'], ['Experiment', 'leave blank']])}`,
         check: g => is(g, AOM, { type: 'aom', location: 'Laser table' }) && fedBy(g, AOM, 'beam', LASER),
       },
       {
         id: 'rewire',
+        heading: 'Feeding the chamber from the AOM',
         text: `Open **${CHAMBER}** (double-click it on the map) and change its \`beam_from\` so it reads:${yaml(`beam_from: ["[[${AOM}]]"]`)}`,
         check: g => onlyBeamFrom(g, CHAMBER, AOM),
       },
@@ -89,34 +99,40 @@ export const STEPS = [
     tasks: [
       {
         id: 'vco',
+        heading: 'Adding a VCO',
         creates: VCO,
-        text: `Click empty space on the map so nothing is selected, then press **+**. Name it **${VCO}**, location **Laser table**, type **rf_source**, experiment **practice**.`,
+        text: `${plus()}${form([['Name', VCO], ['Location', 'Laser table'], ['Type', 'rf_source'], ['Experiment', 'practice']])}`,
         check: g => is(g, VCO, { type: 'rf_source', location: 'Laser table', experiment: 'practice' }),
       },
       {
         id: 'vco-link',
+        heading: 'Driving the AOM from the VCO',
         text: `Open **${AOM}** and set:${yaml(`rf_from: ["[[${VCO}]]"]`)}`,
         check: g => fedBy(g, AOM, 'rf', VCO),
       },
       {
         id: 'board',
+        heading: 'Adding a control board',
         creates: BOARD,
-        text: `Make **${BOARD}** the same way: location **Electronics rack**, type **controller**, experiment **practice**. Leave \`address\` blank.`,
+        text: `${plus()}${form([['Name', BOARD], ['Location', 'Electronics rack'], ['Type', 'controller'], ['Experiment', 'practice']])} Its note gets a blank \`address\`; leave it blank.`,
         check: g => is(g, BOARD, { type: 'controller', location: 'Electronics rack', experiment: 'practice' }),
       },
       {
         id: 'board-link',
+        heading: 'Controlling the VCO from the board',
         text: `Open **${VCO}** and set:${yaml(`control_from: ["[[${BOARD}]]"]`)}`,
         check: g => fedBy(g, VCO, 'control', BOARD),
       },
       {
         id: 'pc',
+        heading: 'Adding a PC',
         creates: PC,
-        text: `Make **${PC}**: location **Electronics rack**, type **controller**, experiment **practice**.`,
+        text: `${plus()}${form([['Name', PC], ['Location', 'Electronics rack'], ['Type', 'controller'], ['Experiment', 'practice']])}`,
         check: g => is(g, PC, { type: 'controller', location: 'Electronics rack', experiment: 'practice' }),
       },
       {
         id: 'pc-link',
+        heading: 'Controlling the board from the PC',
         text: `Open **${BOARD}** and set:${yaml(`control_from: ["[[${PC}]]"]`)}`,
         check: g => fedBy(g, BOARD, 'control', PC),
       },
@@ -132,6 +148,7 @@ export const STEPS = [
     tasks: [
       {
         id: 'move',
+        heading: 'Moving the chamber',
         text: `Open **${CHAMBER}** and change its location:${yaml('location: Chamber table')}`,
         check: g => is(g, CHAMBER, { location: 'Chamber table' }),
       },
@@ -147,17 +164,20 @@ export const STEPS = [
     tasks: [
       {
         id: 'fibre',
+        heading: 'Adding a fibre',
         creates: FIBRE,
-        text: `Select **${AOM}** and press **+**. Name it **${FIBRE}**, location **Laser table**, type **fibre**.`,
+        text: `${plus(AOM)}${form([['Name', FIBRE], ['Location', 'Laser table'], ['Type', 'fibre'], ['Experiment', 'leave blank'], ['Template', 'leave blank (fibres always get the fibre template)']])}`,
         check: g => is(g, FIBRE, { type: 'fibre', location: 'Laser table' }) && fedBy(g, FIBRE, 'beam', AOM),
       },
       {
         id: 'output',
+        heading: 'Setting where the fibre comes out',
         text: `In the fibre's note, fill in the blank \`output_location\`:${yaml('output_location: Chamber table')}`,
         check: g => text(comp(g, FIBRE)?.props.output_location) === 'Chamber table',
       },
       {
         id: 'rewire',
+        heading: 'Feeding the chamber from the fibre',
         text: `Open **${CHAMBER}** and point it at the fibre:${yaml(`beam_from: ["[[${FIBRE}]]"]`)}`,
         check: g => onlyBeamFrom(g, CHAMBER, FIBRE),
       },
@@ -173,6 +193,7 @@ export const STEPS = [
     tasks: [
       {
         id: 'props',
+        heading: "Adding the AOM's specs",
         text: `Open **${AOM}** and add two properties that are true of every AOM of this part number:${yaml('freq_shift_mhz: 80\nmanuals: ["https://example.com/aom-manual.pdf"]')}`,
         check: g => {
           const p = comp(g, AOM)?.props;
@@ -181,6 +202,7 @@ export const STEPS = [
       },
       {
         id: 'model',
+        heading: 'Making the model',
         text: `With the AOM's note open, open the command palette (Ctrl/Cmd+P) and run **Experiment map: Make model from this component**. Name the model **${MODEL}**.`,
         check: g => comp(g, AOM)?.model === MODEL && g.models[MODEL]?.props.type === 'aom',
       },
@@ -240,7 +262,7 @@ const beamLine = from => `\`beam_from: ["[[${from}]]"]\``;
 function fieldHint(g, [name, key, want]) {
   const c = comp(g, name);
   if (!c) return null;
-  if (key === 'type') return c.props.type && c.props.type !== want ? `**${name}** should be type **${want}**, not ${c.props.type}. Change \`type\` in its note.` : null;
+  if (key === 'type') return c.props.type && c.props.type !== want ? `**${name}** needs \`type: ${want}\`. Change \`type\` in its note.` : null;
   if (key === 'fed') {
     const u = units(g, name, 'beam');
     if (!u.length) return `**${name}** isn't fed by anything yet. Set ${beamLine(want)} in its note (pressing **+** with **${want}** selected writes this for you).`;
@@ -274,7 +296,9 @@ export function hintsFor(stepIndex, graph) {
     // A broken or missing link also leaves the component with no inputs and
     // nothing to inherit an experiment from; say only the cause.
     const caused = fields.length > 0 || own.some(x => !KNOCK_ON.test(x.message));
-    for (const p of own.filter(x => !(caused && KNOCK_ON.test(x.message)))) {
+    // A wrong type hint already says which type to use.
+    const typed = (step.fields ?? []).some(f => f[0] === s && f[1] === 'type' && fieldHint(graph, f));
+    for (const p of own.filter(x => !(caused && KNOCK_ON.test(x.message)) && !(typed && /^unknown type/.test(x.message)))) {
       const r = REWORD.find(([re]) => re.test(p.message));
       out.push(r ? r[1](s, p.message) : `**${s}**: ${p.message}`);
     }

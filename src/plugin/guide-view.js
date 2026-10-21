@@ -171,7 +171,9 @@ export class GuideView extends ItemView {
         const done = isTaskDone(progress, step, task);
         const row = box.createDiv(`em-guide-task${done ? ' is-done' : ''}`);
         row.createSpan({ cls: 'em-guide-mark', text: done ? '✓' : '☐' });
-        renders.push(md(row.createDiv('em-guide-text'), task.text));
+        const body = row.createDiv('em-guide-text');
+        body.createDiv({ cls: 'em-guide-task-head', text: task.heading });
+        renders.push(md(body.createDiv(), task.text));
       }
       box.createDiv({ cls: 'em-guide-label', text: 'Why' });
       renders.push(md(box.createDiv('em-guide-text'), step.why));

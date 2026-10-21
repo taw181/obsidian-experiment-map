@@ -83,9 +83,10 @@ the **Practice** switch in the map's toolbar shows it again.
 Or, straight into your own map:
 
 1. Press **+** in the map's toolbar (or run "Experiment map: New component").
-   Make a laser: type `laser`, a location such as `Laser table`.
+   Make a laser: set **Type** to `laser` and **Location** to something like
+   `Laser table`.
 2. Select the laser's box and press **+** again: the new component is fed from
-   it. Make an AOM, then a destination (`destination`, e.g. your chamber).
+   it. Make an AOM, then a chamber (**Type** `chamber`).
 3. Open a note to see and edit its properties. A component only says what
    *feeds* it, as a quoted link:
 

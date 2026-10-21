@@ -32,7 +32,7 @@ component is fed from it. Then fill in its properties:
 | property | meaning | example |
 |---|---|---|
 | `model` | the model note it inherits from | `"[[Example AOM model]]"` |
-| `type` | if no model: one of the types in `Config.md` (laser, amplifier, aom, eom, shutter, fibre, lock, meter, slm, destination, beam_splitter, optics, rf_source, controller) | `aom` |
+| `type` | if no model: one of the types in `Config.md` (laser, amplifier, aom, eom, shutter, fibre, lock, meter, slm, chamber, beam_splitter, optics, rf_source, controller) | `aom` |
 | `experiment` | which experiment(s); needed only on lasers and electronics, others inherit it | `[main]` |
 | `location` | table or rack; becomes a group on the map (for a fibre: its input end) | `Laser table` |
 | `output_location` | fibres only: where the output end is | `Chamber table` |

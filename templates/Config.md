@@ -11,7 +11,7 @@ types:
   aom: {category: optical, color: "#4a80c0"}
   eom: {category: optical, color: "#6a6fc0"}
   shutter: {category: optical, color: "#c06a6a"}
-  fibre: {category: optical, color: "#5a9a5a", link: true, template: fibre}
+  fibre: {category: optical, color: "#3a9ad9", link: true, template: fibre}
   lock: {category: optical, color: "#9a8a5a"}
   destination: {category: optical, color: "#8a8a8a", shape: round, subtitle: false}
   beam_splitter: {category: optical, color: "#7aa0b0"}

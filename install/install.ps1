@@ -4,7 +4,7 @@ Install or update the Experiment map plugin in an Obsidian vault (Windows).
   powershell -ExecutionPolicy Bypass -File install.ps1 [-Vault <path>] [-Claude | -NoClaude] [-Version X.Y.Z] [-From <folder or URL>]
 
 Or put install.ps1 in the vault folder, right-click it and choose "Run with PowerShell".
-The vault defaults to the current folder if it is a vault, else the script's own folder.
+The vault defaults to the vault the current folder is in, else the one the script is in.
 Re-run it to update. -Claude also installs the Claude skill (and the CLI it uses);
 once installed, updates keep it current. -From takes the files from a folder or URL
 instead of the latest GitHub release (for testing a local build).
@@ -45,9 +45,22 @@ trap {
   Finish 1
 }
 
+# The vault a folder is in: the nearest folder up with a .obsidian, or ''.
+function Find-Vault([string]$dir) {
+  while ($dir) {
+    if (Test-Path -LiteralPath (Join-Path $dir '.obsidian') -PathType Container) { return $dir }
+    $dir = Split-Path -Parent $dir
+  }
+  return ''
+}
+
 if (-not $Vault) {
-  if (Test-Path -LiteralPath (Join-Path (Get-Location).Path '.obsidian') -PathType Container) { $Vault = (Get-Location).Path }
-  else { $Vault = $PSScriptRoot }
+  $Vault = Find-Vault (Get-Location).ProviderPath
+  if (-not $Vault -and $PSScriptRoot) { $Vault = Find-Vault $PSScriptRoot }
+  if (-not $Vault) {
+    Write-Host "Not in an Obsidian vault: no .obsidian folder in $((Get-Location).ProviderPath) or above it. Run this from inside the vault's folder, or pass -Vault with the vault's path." -ForegroundColor Red
+    Finish 1
+  }
 }
 if (-not (Test-Path -LiteralPath (Join-Path $Vault '.obsidian') -PathType Container)) {
   Write-Host "Not an Obsidian vault: $Vault has no .obsidian folder. Open this folder in Obsidian first, or pass the vault's path." -ForegroundColor Red

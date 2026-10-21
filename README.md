@@ -30,14 +30,22 @@ at least once.
    open PowerShell and run:
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File "$HOME\Downloads\install.ps1" -Vault "C:\path\to\your vault"
+   cd "C:\path\to\your vault"
+   powershell -ExecutionPolicy Bypass -File .\install.ps1
    ```
 
 **macOS and Linux**
 
+In a terminal, from your vault's folder (or any folder inside it):
+
 ```sh
-curl -fsSL https://github.com/taw181/obsidian-experiment-map/releases/latest/download/install.sh | sh -s -- "/path/to/your vault"
+curl -fsSL https://github.com/taw181/obsidian-experiment-map/releases/latest/download/install.sh | sh
 ```
+
+The scripts install into the vault the current folder is in, so you can run
+them from anywhere inside it, for example the root of a git-synced vault. To
+install into a different vault, pass its path: `-Vault "C:\path\to\vault"` /
+`sh -s -- "/path/to/vault"`.
 
 The script asks whether to install the Claude skill too (answer **N** if you
 don't use Claude). Then, in Obsidian:

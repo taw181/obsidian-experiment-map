@@ -7,6 +7,7 @@ import { mentionsFor } from './obsidian-io.js';
 import { chainOf } from '../core/trace.js';
 import { applyLegacy, gridSize, snap } from '../core/layout.js';
 import { setupVault } from './setup.js';
+import { routeFibres, toSegments } from './route.js';
 
 export const VIEW_TYPE = 'experiment-map';
 
@@ -24,6 +25,7 @@ export class MapView extends ItemView {
     this.selected = null;
     this.fitted = false;
     this.refreshTimer = null;
+    this.routeFrame = null;
     this.bgImg = null;
     this.knownExperiments = [];
     this.state = { layers: { beam: true, rf: false, control: false }, experiments: null, hiddenTags: new Set(), showRetired: false, legendOpen: true };
@@ -186,6 +188,10 @@ export class MapView extends ItemView {
         this.plugin.layout.set(n.id(), [x + dx, y + dy]);
       });
     });
+    // Fibres are re-routed at most once a frame while anything moves.
+    cy.on('position', 'node', () => {
+      if (this.routeFrame == null) this.routeFrame = requestAnimationFrame(() => { this.routeFrame = null; this.routeFibres(); });
+    });
     cy.on('viewport', () => this.positionBackground());
     cy.on('dbltap', 'node, edge.link', e => {
       const c = this.graph?.components[componentOf(e.target)];
@@ -214,7 +220,33 @@ export class MapView extends ItemView {
         e.toggleClass('hidden', !on || e.source().hasClass('hidden') || e.target().hasClass('hidden'));
       });
     });
+    this.routeFibres();
     this.renderLegend();
+  }
+
+  // Routes each shown fibre line around the shown boxes and markers (route.js).
+  // Hidden boxes don't count, so this runs again whenever visibility changes.
+  routeFibres() {
+    if (!this.cy) return;
+    const links = this.cy.edges('.link').filter(e => !e.hasClass('hidden'));
+    if (links.empty()) return;
+    const boxes = this.cy.nodes().filter(n => !n.data('isGroup') && !n.hasClass('hidden')).map(n => {
+      const { x1, y1, x2, y2 } = n.boundingBox({ includeLabels: true, includeOverlays: false });
+      return { id: n.id(), x1, y1, x2, y2 };
+    });
+    const at = n => [n.position('x'), n.position('y')];
+    const fibres = links.map(e => ({ id: e.id(), from: at(e.source()), to: at(e.target()), ends: [e.source().id(), e.target().id()] }));
+    const routes = routeFibres(fibres, boxes);
+    this.cy.batch(() => fibres.forEach(f => {
+      const e = this.cy.getElementById(f.id);
+      const seg = routes[f.id] && toSegments(f.from, f.to, routes[f.id]);
+      if (!seg) {
+        e.removeClass('routed');
+        return;
+      }
+      e.data({ segWeights: seg.weights, segDistances: seg.distances });
+      e.addClass('routed');
+    }));
   }
 
   renderToolbar() {
@@ -384,6 +416,7 @@ export class MapView extends ItemView {
 
   async onClose() {
     clearTimeout(this.refreshTimer);
+    if (this.routeFrame != null) cancelAnimationFrame(this.routeFrame);
     this.cy?.destroy();
     this.cy = null;
   }

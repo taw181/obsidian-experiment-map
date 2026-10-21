@@ -35,6 +35,8 @@ export function buildStyle(theme) {
     { selector: 'edge.rf', style: { 'line-style': 'dashed', 'line-dash-pattern': [7, 5] } },
     { selector: 'edge.control', style: { 'line-style': 'dotted' } },
     { selector: 'edge.link', style: { 'text-events': 'yes', 'curve-style': 'unbundled-bezier', 'control-point-distances': [40], 'control-point-weights': [0.5], label: 'data(label)', 'font-size': 10, color: theme.text, 'text-background-color': theme.bg, 'text-background-opacity': 0.9, 'text-background-padding': 2, 'text-rotation': 'autorotate' } },
+    // A fibre routed round the boxes (route.js); unrouted, it keeps the curve above.
+    { selector: 'edge.link.routed', style: { 'curve-style': 'round-segments', 'edge-distances': 'node-position', 'segment-weights': e => e.data('segWeights'), 'segment-distances': e => e.data('segDistances'), 'segment-radii': 12 } },
     { selector: 'edge.link[outline]', style: { 'line-outline-width': 2, 'line-outline-color': 'data(outline)' } },
     { selector: 'edge.lit', style: { label: 'data(label)', 'font-size': 10, color: theme.text, 'text-background-color': theme.bg, 'text-background-opacity': 0.9, 'text-background-padding': 2, 'text-rotation': 'autorotate' } },
     { selector: '.dim', style: { opacity: 0.15 } },

@@ -140,8 +140,9 @@ Only the view draws it differently:
   `location` group, `<name>#out` in the `output_location` group. `#` cannot
   appear in a component name, so these ids never clash;
 - an edge `link:<name>` between them: wavelength-coloured, outlined in the
-  type's colour, curved, always labelled with the name (with `⚠` if it has
-  problems), part of the beam layer;
+  type's colour, always labelled with the name (with `⚠` if it has
+  problems), part of the beam layer. It is routed around the boxes and markers
+  shown (see Drawing); with no way round it is drawn as a curve;
 - edges into the fibre end at `#in`; edges out of it start at `#out`.
 
 Markers carry the fibre's status, experiment and filter tag, so filters hide them
@@ -317,6 +318,17 @@ a dashed border and `⚠` before the name; `spare` and `retired` are hidden unle
 edges dotted, both hidden by default. A collapsible legend shows the beam colours
 actually drawn and the edge and node styles. An optional background image pans
 and zooms with the map.
+
+**Fibre routing** (`src/plugin/route.js`). Each shown fibre line runs at right
+angles with rounded corners, clear of every shown box and marker except its own
+two ends by 14 px. Route lines are the ones just outside each box, through the
+fibre's ends and midway between those. The route is the shortest with a penalty
+for each turn and for running along a line an earlier fibre already uses, so
+parallel fibres spread out when there is room. Fibres are routed in id order,
+again whenever a node moves (at most once a frame) and whenever what is shown
+changes. A box whose margin covers a fibre's end loses its margin for that
+fibre, and one that contains the end is ignored. Routes are never saved. Beam,
+RF and control edges are not routed.
 
 **Interaction.**
 

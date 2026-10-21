@@ -25,7 +25,7 @@ release workflow builds them.
 | `core/graph.js` | `buildGraph()` builds `{components, models, channels[exp][name] = {primary, unit, usedBy}, edges, problems}` |
 | `core/trace.js`, `emit.js`, `layout.js` | `trace` text, the generated files, `layout.json` handling and auto-placement |
 | `core/query.js` | `find` / `channels` filters over the records `emit.js` writes to `map.yaml` |
-| `src/plugin/` | Obsidian shell: `view.js` (Cytoscape), `elements.js`, `style.js`, `panel.js`, `commands.js`, `setup.js` |
+| `src/plugin/` | Obsidian shell: `view.js` (Cytoscape), `elements.js`, `style.js`, `route.js` (fibre routing), `panel.js`, `commands.js`, `setup.js` |
 | `src/cli/` | Node shell: `cli.js` (commands), `node-io.js` |
 | `templates/` | Starter `Config.md` and how-to note, bundled into `main.js` for "Set up this vault" |
 | `skill/` | The Claude skill and `CLAUDE.md` block the install scripts copy into a vault |

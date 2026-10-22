@@ -1,7 +1,7 @@
 {
   "id": "experiment-map",
   "name": "Experiment map",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "minAppVersion": "1.5.0",
   "description": "Clickable map of lasers, beam paths and control electronics, built from component notes.",
   "author": "Tom Walker",

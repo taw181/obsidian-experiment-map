@@ -93,3 +93,9 @@ GitHub release with `main.js`, `manifest.json`, `styles.css`, `cli.js`,
 `SKILL.md`, `CLAUDE-snippet.md`, `install.sh` and `install.ps1`. The install
 scripts download from the latest release. Check the release's assets once
 the workflow has run (`gh release view 0.3.0`).
+
+Don't create the release on GitHub by hand: the workflow then fails with "a
+release with the same tag name already exists", leaving a latest release with
+no files, which breaks every install. To recover, delete the release but keep
+the tag (`gh release delete 0.3.0 --yes`), re-run the failed workflow run, then
+add any notes with `gh release edit 0.3.0 --notes "..."`.

@@ -45,6 +45,7 @@ component is fed from it. Then fill in its properties:
 | `beam_from` | what the light comes from (optionally one port of it) | `["[[Example laser]]"]` |
 | `rf_from` | the VCO or other RF source, optionally one item in it | `["[[Example AOM VCO]]"]` |
 | `control_from` | the controller (DAQ board, PC, driver), optionally with a channel; or a channel page | `["[[DAQ board#line 3]]"]` |
+| `<role>_control_from` | the same, for a control link that does one job the type lists in `control_roles` (a VCO: `amplitude`, `frequency`, `switch`) | `frequency_control_from: ["[[DAQ board#line 3]]"]` |
 | `wavelength_nm` | on light sources (and doublers); others inherit it | `780` |
 | `address` | on controllers: the board's address, used to match channels from a channel source | `Dev1` |
 | `manuals` | links to manuals | `["https://..."]` |
@@ -66,7 +67,8 @@ add a channel after `#` (`"[[DAQ board#line 3]]"`); it labels the wire, and the
 board's note doesn't need to list its channels. Electronics are coarse: one note
 per PC, DAQ board or DDS board. Each VCO is its own `rf_source` note, with the
 table it sits on (normally the one of the AOM it drives) as its `location` and
-whatever tunes or switches it in `control_from`. A unit with several outputs (a
+what controls it split by job: `amplitude_control_from`, `frequency_control_from`
+and `switch_control_from` (`control_from` for anything else). A unit with several outputs (a
 DDS board) gets one `## heading` per output, linked as `[[DDS board#output]]`.
 
 If `Config.md` names a channel source for an experiment, its channel page lists

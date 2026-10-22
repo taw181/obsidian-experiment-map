@@ -3,6 +3,10 @@ import { LINE_STYLES, STATUSES, lineStyleKeys, wavelengthColor } from './config.
 import { normAddress, channelTables } from './channels.js';
 
 const CONNECTIONS = ['beam_from', 'rf_from', 'control_from'];
+// `<role>_control_from`: a control link that does one job (a type's control_roles).
+const ROLE_SUFFIX = '_control_from';
+const ROLE_NAME = /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/;
+const isConnection = k => CONNECTIONS.includes(k) || k.endsWith(ROLE_SUFFIX);
 const SIDES = ['top', 'right', 'bottom', 'left'];
 const NOT_INHERITED = new Set([...CONNECTIONS, 'location', 'output_location', 'model', 'extends']);
 const MERGED_LISTS = new Set(['manuals']);
@@ -61,6 +65,14 @@ export function buildGraph({ config, components: componentNotes, models: modelNo
     else if (!LINE_STYLES.includes(v)) problem(null, `line_styles: unknown style '${v}' for ${k} (use ${LINE_STYLES.join(', ')})`);
   }
 
+  for (const [t, def] of Object.entries(config.types)) {
+    if (def?.control_roles === undefined) continue;
+    if (!Array.isArray(def.control_roles)) { problem(null, `types: ${t}: control_roles must be a list, like [amplitude, frequency]`); continue; }
+    for (const r of def.control_roles) {
+      if (!ROLE_NAME.test(String(r))) problem(null, `types: ${t}: control role '${r}' must be lower-case letters, digits and _ (it becomes the property ${r}${ROLE_SUFFIX})`);
+    }
+  }
+
   // --- models -------------------------------------------------------------
   const resolvedModels = new Map();
   function resolveModel(name, stack = []) {
@@ -99,7 +111,7 @@ export function buildGraph({ config, components: componentNotes, models: modelNo
   for (const [name, note] of compNotes) {
     const fm = note.frontmatter;
     const own = {};
-    for (const [k, v] of Object.entries(fm)) if (!CONNECTIONS.includes(k) && k !== 'model') own[k] = v;
+    for (const [k, v] of Object.entries(fm)) if (!isConnection(k) && k !== 'model') own[k] = v;
     let base = { props: {}, origin: {} };
     let model = null;
     const modelLink = parseWikilink(linkList(fm.model)[0]);
@@ -108,7 +120,7 @@ export function buildGraph({ config, components: componentNotes, models: modelNo
         model = modelLink.target;
         const m = resolveModel(model);
         for (const [k, v] of Object.entries(m.props)) {
-          if (NOT_INHERITED.has(k)) continue;
+          if (NOT_INHERITED.has(k) || isConnection(k)) continue;
           base.props[k] = v;
           base.origin[k] = m.origin[k];
         }
@@ -144,6 +156,7 @@ export function buildGraph({ config, components: componentNotes, models: modelNo
       name, path: note.path, model, props, origin, fm,
       headings: note.headings,
       category: typeDef?.category ?? null,
+      roles: Array.isArray(typeDef?.control_roles) ? typeDef.control_roles.map(String) : [],
       isSource: Boolean(typeDef?.source),
       inputs: { beam: [], rf: [], control: [] },
       feeds: [], drives: [],
@@ -192,32 +205,46 @@ export function buildGraph({ config, components: componentNotes, models: modelNo
       headingCheck(c, 'rf_from', l);
       c.inputs.rf.push({ unit: l.target, item: l.heading });
     }
-    for (const l of linksOf(c, 'control_from')) {
-      if (pages.has(l.target)) {
-        const exp = pages.get(l.target);
-        const src = channelSources[exp];
-        // A bare channel-page link: some channel of this experiment, not named.
-        if (!l.heading) { c.inputs.control.push({ unit: null, channel: null, experiment: exp }); continue; }
-        // The source itself failed (one problem says so): don't flag every channel.
-        if (src.error) { c.inputs.control.push({ unit: null, channel: l.heading, experiment: exp, address: null }); continue; }
-        const entry = channels[exp][l.heading];
-        if (!entry) {
-          problem(c.name, src.missing ? `control_from: no copy of ${src.label} yet, so channel '${l.heading}' can't be checked (run sync)` : `control_from: channel '${l.heading}' is not in ${src.label}`);
-          continue;
+    // Plain control_from first, then the type's roles in order, then roles it
+    // doesn't have (a problem, but the links are still drawn).
+    const roleKeys = Object.keys(c.fm).filter(k => k.endsWith(ROLE_SUFFIX));
+    const roleOf = k => k.slice(0, -ROLE_SUFFIX.length);
+    const extra = roleKeys.filter(k => !c.roles.includes(roleOf(k))).sort(cmp);
+    for (const k of extra) {
+      if (isUnset(c.fm[k])) continue;
+      problem(c.name, c.roles.length
+        ? `${k}: type '${c.props.type}' has no control role '${roleOf(k)}' (it has ${c.roles.join(', ')})`
+        : `${k}: type '${c.props.type}' has no control roles (set control_roles on it in Config.md)`);
+    }
+    for (const [key, role] of [['control_from', null], ...[...c.roles.map(r => `${r}${ROLE_SUFFIX}`), ...extra].map(k => [k, roleOf(k)])]) {
+      const tag = role ? { role } : {};
+      for (const l of linksOf(c, key)) {
+        if (pages.has(l.target)) {
+          const exp = pages.get(l.target);
+          const src = channelSources[exp];
+          // A bare channel-page link: some channel of this experiment, not named.
+          if (!l.heading) { c.inputs.control.push({ ...tag, unit: null, channel: null, experiment: exp }); continue; }
+          // The source itself failed (one problem says so): don't flag every channel.
+          if (src.error) { c.inputs.control.push({ ...tag, unit: null, channel: l.heading, experiment: exp, address: null }); continue; }
+          const entry = channels[exp][l.heading];
+          if (!entry) {
+            problem(c.name, src.missing ? `${key}: no copy of ${src.label} yet, so channel '${l.heading}' can't be checked (run sync)` : `${key}: channel '${l.heading}' is not in ${src.label}`);
+            continue;
+          }
+          entry.usedBy.push(c.name);
+          for (const reason of entry.primary.disabled) problem(c.name, `channel '${l.heading}' is ${reason} in ${src.label}`);
+          if (!entry.unit) {
+            problem(c.name, entry.primary.board
+              ? `channel '${l.heading}' is on board ${entry.primary.board}, but no ${exp} controller has address: ${entry.primary.board}`
+              : `channel '${l.heading}' has an address the source could not resolve (${entry.primary.unresolved ?? 'none given'})`);
+          }
+          c.inputs.control.push({ ...tag, unit: entry.unit, channel: l.heading, experiment: exp, address: entry.primary.address });
+        } else if (comps.has(l.target)) {
+          // A channel after # is only a label: controllers needn't list their channels.
+          c.inputs.control.push({ ...tag, unit: l.target, item: l.heading });
+        } else {
+          problem(c.name, `${key} [[${l.target}]] is not a component note or channel page`);
         }
-        entry.usedBy.push(c.name);
-        for (const reason of entry.primary.disabled) problem(c.name, `channel '${l.heading}' is ${reason} in ${src.label}`);
-        if (!entry.unit) {
-          problem(c.name, entry.primary.board
-            ? `channel '${l.heading}' is on board ${entry.primary.board}, but no ${exp} controller has address: ${entry.primary.board}`
-            : `channel '${l.heading}' has an address the source could not resolve (${entry.primary.unresolved ?? 'none given'})`);
-        }
-        c.inputs.control.push({ unit: entry.unit, channel: l.heading, experiment: exp, address: entry.primary.address });
-      } else if (comps.has(l.target)) {
-        // A channel after # is only a label: controllers needn't list their channels.
-        c.inputs.control.push({ unit: l.target, item: l.heading });
-      } else {
-        problem(c.name, `control_from [[${l.target}]] is not a component note or channel page`);
       }
     }
   }
@@ -313,7 +340,8 @@ export function buildGraph({ config, components: componentNotes, models: modelNo
     }
     for (const x of c.inputs.control) {
       if (!x.unit) continue;
-      addEdge('control', x.unit, c.name, x.channel ?? x.item, config.control_color);
+      const label = x.channel ?? x.item;
+      addEdge('control', x.unit, c.name, x.role ? [x.role, label].filter(Boolean).join(': ') : label, config.control_color);
       comps.get(x.unit).drives.push(c.name);
     }
   }

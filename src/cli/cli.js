@@ -21,11 +21,12 @@ commands:
 
 A FILTER is key=value (exact) or key~text (contains), ignoring case; a bare word
 is name~word. Keys are those in map.yaml: any component property, plus note,
-model, beam_from, rf_from, control_from, feeds, drives; for channels experiment,
-name, address, board, kind, unit, comment, disabled, source, used_by and any
-extra key the channel source adds.
+model, beam_from, rf_from, control_from (with each link's role), feeds, drives;
+for channels experiment, name, address, board, kind, unit, comment, disabled,
+source, used_by and any extra key the channel source adds.
   find type=aom location~"laser table"      find drives~cooling      find status=spare
   channels board=Dev1 --unused              channels address~port0/line3
+  find control_from~frequency
 
 --vault defaults to the current directory (the vault root).
 `;

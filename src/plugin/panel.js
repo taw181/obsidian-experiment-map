@@ -93,7 +93,7 @@ export function renderPanel(el, name, ctx) {
     });
   }
   for (const x of c.inputs.control) {
-    row(ins, 'control', v => {
+    row(ins, x.role ?? 'control', v => {
       const page = x.experiment ? ctx.channelSources[x.experiment]?.page : null;
       if (x.unit) link(v, x.unit, () => ctx.select(x.unit));
       else if (!x.channel && page) link(v, page, () => ctx.openLink(page));

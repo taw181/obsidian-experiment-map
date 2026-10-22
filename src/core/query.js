@@ -35,9 +35,10 @@ function unknownKeys(records, filters) {
 }
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-// An input with an item ({unit, item}, {unit, channel}) reads `unit › item`.
+// An input with an item ({unit, item}, {unit, channel}) reads `unit › item`,
+// after `role: ` for a control link with a role.
 const entryText = v => (v && typeof v === 'object' && !Array.isArray(v) && 'unit' in v
-  ? [v.unit ?? '(no controller)', v.item ?? v.channel].filter(Boolean).join(' › ')
+  ? `${v.role ? `${v.role}: ` : ''}${[v.unit ?? '(no controller)', v.item ?? v.channel].filter(Boolean).join(' › ')}`
   : flatValues(v).join(', '));
 const listText = v => (Array.isArray(v) ? v.map(entryText) : [entryText(v)]).join(', ');
 

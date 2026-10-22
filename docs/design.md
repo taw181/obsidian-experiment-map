@@ -58,11 +58,13 @@ names a port or item of the component.
 | `source: true` | needs no inputs, and must set `experiment` itself |
 | `color`, `shape: round`, `subtitle: false` | node colour; oval instead of a rounded rectangle; show only the name, without the type and model line |
 | `link: true` | drawn as a two-ended connection (fibres; see Fibres) |
+| `control_roles` | list of jobs its control links can do; each role `r` is a property `r_control_from` (see Control roles) |
 | `template: <name>` | template always added when a component of this type is created |
 
 Built-in types: `laser`, `amplifier`, `aom`, `eom`, `shutter`, `fibre` (link),
-`lock`, `chamber` (round, no subtitle), `rf_source`, `controller` (`laser`,
-`rf_source` and `controller` are sources). The starter `Config.md` adds
+`lock`, `chamber` (round, no subtitle), `rf_source` (control roles `amplitude`,
+`frequency`, `switch`), `controller` (`laser`, `rf_source` and `controller` are
+sources). The starter `Config.md` adds
 `beam_splitter`, `optics`, `meter` and `slm`, and gives `fibre` the `fibre` template.
 
 ### Properties
@@ -83,6 +85,7 @@ Connection properties record **inputs only**; `feeds` and `drives` are computed.
 | `port_sides` | map of port to `top`/`right`/`bottom`/`left`: where beams from that port leave the node |
 | `rf_from` | links to RF sources, or to an item of a unit: `"[[DDS board#ch 2]]"` |
 | `control_from` | links to a controller (optionally `#channel`) or a channel page; see Control links |
+| `<role>_control_from` | the same, for control links that do one of the type's `control_roles`; see Control roles |
 | `wavelength_nm` | number or list, on light sources; optical components without one inherit it along `beam_from` |
 | `address` | controllers: board address, matched against channel sources' boards |
 | `manuals` | list of URLs or `[label](url)` entries |
@@ -110,8 +113,8 @@ frontmatter, what is true of every unit in its body. Its backlinks list every un
 2. A model may `extends:` one other model, to any depth; each level overrides the
    one above. A cycle is a problem, and the chain is cut at the repeat.
 3. `manuals` merges instead: ancestors first, then the component's, no duplicates.
-4. `beam_from`, `rf_from`, `control_from`, `location`, `output_location`, `model`
-   and `extends` are never inherited.
+4. `beam_from`, `rf_from`, `control_from`, `<role>_control_from`, `location`,
+   `output_location`, `model` and `extends` are never inherited.
 5. Defaults (`status: active`, `experiment` and `wavelength_nm` from upstream)
    apply after inheritance, only if still unset.
 
@@ -181,6 +184,25 @@ channel must exist in the source and not be disabled, and its board must match
 the `address` of a `controller` whose `experiment` includes the source's
 experiment (one address may exist in two experiments). The channel's `used_by`
 gains the component.
+
+### Control roles
+
+A type's `control_roles` (lower-case words, e.g. `[amplitude, frequency, switch]`)
+name the jobs its control links do, so scripts can tell a VCO's amplitude
+channel from its frequency channel. Each role `r` is its own list property,
+`r_control_from`, taking the same links as `control_from`; `control_from` stays
+for links without a role. All of them are control inputs: the same wires,
+channel checks and `used_by`. A control input with a role carries `role` in the
+graph, in `map.yaml` and wherever it is shown:
+
+- the wire's label is `<role>: <channel or item>`, or just the role;
+- the details panel row is keyed by the role instead of `control`;
+- `trace` writes `<role> control (...)`; `find` writes `<role>: unit › item`.
+
+Inputs are ordered `control_from`, then the type's roles in `control_roles`
+order, then any roles the type doesn't have. Those are still drawn, but each is
+a problem. Role properties are never inherited from a model, and "Make model
+from this component" leaves them on the component.
 
 ### Channel sources
 
@@ -265,7 +287,8 @@ to regenerate it, and give one line per source,
 - `components`: resolved properties (model chain and defaults applied), `note`,
   `model`, inputs (`beam_from`: a name or `{unit, item}`; `rf_from: [{unit, item}]`;
   `control_from`: `{unit, item}`, `{unit, channel, experiment, address}`, or
-  `{experiment}` for a bare page link), `feeds`, `drives`;
+  `{experiment}` for a bare page link, each with `role` if it came from a
+  `<role>_control_from` property), `feeds`, `drives`;
 - `models`: resolved properties, `note`, `extends`, `instances`;
 - `channels`: per experiment and name, `extra` values plus `kind`, `address`,
   `unresolved`, `board`, `unit` (controller), `source`, `comment`, `disabled`,
@@ -410,13 +433,15 @@ Obsidian's own "Backlinks in document", if that is on.
 experiment (if no model or a source-type model; blank means inherit) and template
 (if any are defined). It writes `<components_folder>/<name>.md` with `model` or
 `type`, `experiment`, `location`; `beam_from` (the selection, if both are optical)
-and `rf_from` for optical types; `control_from`; `address` for controllers;
+and `rf_from` for optical types; `control_from` and one `<role>_control_from` per
+control role of the type; `address` for controllers;
 `manuals`; then the template properties, and opens it. Names may not contain
 `\ / : # ^ [ ] | * " < > ?` or repeat a component or model.
 
 **Make model from this component** moves every non-blank property except
-`beam_from`, `rf_from`, `control_from`, `location`, `output_location`, `status`,
-`experiment`, `address`, `model`, `tags`, `aliases`, `cssclasses` and
+`beam_from`, `rf_from`, `control_from`, `<role>_control_from`, `location`,
+`output_location`, `status`, `experiment`, `address`, `model`, `tags`, `aliases`,
+`cssclasses` and
 `unit_properties` into a new model, which `extends` the old model; the
 component's `model` then points to it.
 
@@ -564,6 +589,7 @@ from `check`; deduplicated and sorted by subject, then message. The messages
 | models | `extends [[<p>]], which is not a model note`; `inheritance cycle: <a> → <b> → <a>`; `extends must be a link, like "[[Generic AOM]]"` |
 | | `model [[<m>]] is not a model note`; `model must be a link, like "[[Example AOM model]]"` |
 | config | `line_styles: '<k>' is not beam, rf, control or a link type`; `line_styles: unknown style '<s>' for <k> (use straight, curved, right_angles, avoid_components)` (no subject) |
+| | `types: <t>: control_roles must be a list, like [amplitude, frequency]`; `types: <t>: control role '<r>' must be lower-case letters, digits and _ (it becomes the property <r>_control_from)` (no subject) |
 | properties | `unknown status '<s>' (use active, spare, broken, retired)` |
 | | `unknown experiment '<e>' (Config.md lists <list>)` (only when known experiments exist) |
 | | `filter_tag takes one value, not <n>`; `unknown filter_tag '<t>' (Config.md's filter_tags lists <list or none>)` |
@@ -573,6 +599,7 @@ from `check`; deduplicated and sorted by subject, then message. The messages
 | links | `<key> entry '<raw>' is not a link` |
 | | `beam_from [[<t>]] is not a component note`; `beam_from: [[<t>]] has no heading '<h>'`; both also for `rf_from` |
 | | `control_from [[<t>]] is not a component note or channel page` |
+| | `<role>_control_from: type '<t>' has no control role '<role>' (it has <roles>)`; `<role>_control_from: type '<t>' has no control roles (set control_roles on it in Config.md)` |
 | channels | `control_from: channel '<c>' is not in <label>`; `control_from: no copy of <label> yet, so channel '<c>' can't be checked (run sync)` |
 | | `channel '<c>' is <reason> in <label>` (one per `disabled` reason) |
 | | `channel '<c>' is on board <b>, but no <exp> controller has address: <b>` |
@@ -581,7 +608,8 @@ from `check`; deduplicated and sorted by subject, then message. The messages
 | inheritance | `no experiment (sources and electronics must set experiment)` (`source: true` types); `no experiment, and nothing upstream to inherit one from` |
 | inputs | `has no inputs (set beam_from, rf_from or control_from)` (typed, non-source components) |
 
-The `experiment` and no-inputs problems skip `spare` and `retired` components.
+The `control_from` link and channel problems name the property the link is in
+(`frequency_control_from: ...` for a role). The `experiment` and no-inputs problems skip `spare` and `retired` components.
 Board and address problems are reported per use, on the component that links the
 channel. Channel-source conditions that are not problems (fetch failure, no cache,
 duplicate source, the old `hardware:` key) are CLI notes and Obsidian notices.

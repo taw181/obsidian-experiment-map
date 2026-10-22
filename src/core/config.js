@@ -21,7 +21,7 @@ export const DEFAULT_CONFIG = {
     fibre: { category: 'optical', color: '#3a9ad9', link: true },
     lock: { category: 'optical', color: '#9a8a5a' },
     chamber: { category: 'optical', color: '#8a8a8a', shape: 'round', subtitle: false },
-    rf_source: { category: 'electronics', source: true, color: '#9070c0' },
+    rf_source: { category: 'electronics', source: true, color: '#9070c0', control_roles: ['amplitude', 'frequency', 'switch'] },
     controller: { category: 'electronics', source: true, color: '#708090' },
   },
   wavelength_colors: {},

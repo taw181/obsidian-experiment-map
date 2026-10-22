@@ -39,9 +39,10 @@ export function chainOf(graph, name) {
 }
 
 function controlHow(x) {
-  if (x.channel) return `control (${x.channel} @ ${x.address ?? 'unresolved address'})`;
-  if (x.experiment) return `control (channel not named, ${x.experiment})`;
-  return x.item ? `control (${x.item})` : 'control';
+  const how = x.role ? `${x.role} control` : 'control';
+  if (x.channel) return `${how} (${x.channel} @ ${x.address ?? 'unresolved address'})`;
+  if (x.experiment) return `${how} (channel not named, ${x.experiment})`;
+  return x.item ? `${how} (${x.item})` : how;
 }
 
 // Indented tree of a component's chain, for the CLI. A note path is shown only

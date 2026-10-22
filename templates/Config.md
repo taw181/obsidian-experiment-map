@@ -18,7 +18,7 @@ types:
   optics: {category: optical, color: "#a09a80"}
   meter: {category: optical, color: "#6f9f8f"}
   slm: {category: optical, color: "#b07aa0"}
-  rf_source: {category: electronics, source: true, color: "#9070c0"}
+  rf_source: {category: electronics, source: true, color: "#9070c0", control_roles: [amplitude, frequency, switch]}
   controller: {category: electronics, source: true, color: "#708090"}
 wavelength_colors: {}
 default_wavelength_color: "#999999"
@@ -55,6 +55,11 @@ nested settings below don't show properly in the Properties panel.
 - `link: true` on a type: its components are drawn as a connection with two
   ends instead of a box (fibres). `location` is the input end and
   `output_location` the output end; each end can be dragged on its own.
+- `control_roles` on a type: the jobs its control links can do, e.g.
+  `[amplitude, frequency, switch]` for a VCO. Each role is its own property,
+  `<role>_control_from` (`amplitude_control_from: ["[[DAQ board#line 3]]"]`),
+  beside `control_from` for anything without a role. `map.yaml` gives each
+  control link its `role`, so scripts can tell them apart.
 - `template: <name>` on a type: that template is filled in whenever a component
   of that type is created.
 - `templates`: named lists of properties. "New component" can add one (and

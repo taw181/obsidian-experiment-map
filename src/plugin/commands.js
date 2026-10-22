@@ -4,7 +4,8 @@ import { templateProperties } from '../core/config.js';
 import { asList } from '../core/wikilink.js';
 
 const INVALID_NAME = /[\\/:#^[\]|*"<>?]/;
-// Properties that describe one physical unit; "make model" leaves them on the component.
+// Properties that describe one physical unit; "make model" leaves them on the
+// component, as it does `<role>_control_from`.
 const UNIT_PROPERTIES = new Set(['beam_from', 'rf_from', 'control_from', 'location', 'output_location', 'status', 'experiment', 'address', 'model', 'tags', 'aliases', 'cssclasses']);
 
 export function registerEditCommands(plugin) {
@@ -146,6 +147,7 @@ async function newComponent(plugin, selected) {
         fm.rf_from = [];
       }
       fm.control_from = [];
+      for (const r of asList(config.types[type]?.control_roles)) fm[`${r}_control_from`] = [];
       if (type === 'controller') fm.address = '';
       fm.manuals = [];
       for (const k of templateProperties(config, { type, template: v.template, modelProps: model?.props ?? {}, existing: Object.keys(fm) })) fm[k] = null;
@@ -185,7 +187,7 @@ async function makeModelFrom(plugin, file) {
     const moved = {};
     const unit = new Set([...UNIT_PROPERTIES, ...asList(config.unit_properties).map(String)]);
     const blank = val => val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
-    for (const [k, val] of Object.entries(fm)) if (!unit.has(k) && !blank(val)) moved[k] = val;
+    for (const [k, val] of Object.entries(fm)) if (!unit.has(k) && !k.endsWith('_control_from') && !blank(val)) moved[k] = val;
     if (!Object.keys(moved).length) return 'Nothing to move: this note only has connections, location, status, experiment, per-unit properties and blank ones.';
     const modelFm = {};
     if (fm.model) modelFm.extends = fm.model;

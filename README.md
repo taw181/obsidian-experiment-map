@@ -119,6 +119,20 @@ A control link names the controller: `control_from: ["[[DAQ board]]"]`. A
 channel is optional; `"[[DAQ board#line 3]]"` adds it as a label on the wire.
 That is all most labs need.
 
+When a component's control links do different jobs, give its type
+`control_roles` in `Config.md` and write each job's links in its own property.
+The built-in `rf_source` type has the roles `amplitude`, `frequency` and
+`switch`:
+
+```yaml
+amplitude_control_from: ["[[Main channels#vcoAmp]]"]
+frequency_control_from: ["[[DAQ board#line 3]]"]
+switch_control_from: ["[[Main channels#vcoTTL]]"]
+```
+
+Each of these links gets a `role` in `map.yaml` (`control_from: [{role: amplitude, unit: DAQ board, ...}]`),
+so scripts can tell the channels apart. The role also labels the wire.
+
 If your lab's control channels are listed somewhere a script can read (a file
 in your control software's repository, a CSV in the vault), a **channel
 source** turns that list into a channel page per experiment. Components can then

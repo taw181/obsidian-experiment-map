@@ -27,9 +27,12 @@ export function componentRecord(c) {
     model: c.model,
     beam_from: c.inputs.beam.map(b => (b.item ? compact({ unit: b.unit, item: b.item }) : b.unit)),
     rf_from: c.inputs.rf.map(r => compact({ unit: r.unit, item: r.item })),
-    control_from: c.inputs.control.map(x => (x.channel
-      ? { unit: x.unit, channel: x.channel, experiment: x.experiment, address: x.address }
-      : x.experiment ? { experiment: x.experiment } : compact({ unit: x.unit, item: x.item }))),
+    control_from: c.inputs.control.map(x => ({
+      ...(x.role ? { role: x.role } : {}),
+      ...(x.channel
+        ? { unit: x.unit, channel: x.channel, experiment: x.experiment, address: x.address }
+        : x.experiment ? { experiment: x.experiment } : compact({ unit: x.unit, item: x.item })),
+    })),
     feeds: c.feeds,
     drives: c.drives,
   });

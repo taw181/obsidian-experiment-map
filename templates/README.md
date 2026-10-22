@@ -4,6 +4,11 @@ A clickable map of the lab: lasers, beam paths, modulators, shutters, fibres,
 and the electronics and control channels that drive them. Open it with the map
 icon in the left ribbon or "Experiment map: Open".
 
+> [!tip] New here?
+> Run **Experiment map: Start getting started guide** from the command palette.
+> It walks you through building a small practice map, in its own folder, and
+> ticks each step off as you go.
+
 > [!warning] Not yet tested on mobile
 > The map has only been tried in desktop Obsidian. On a phone or tablet it may be
 > slow or misbehave; the notes themselves are fine to read and edit anywhere.
@@ -27,7 +32,7 @@ component is fed from it. Then fill in its properties:
 | property | meaning | example |
 |---|---|---|
 | `model` | the model note it inherits from | `"[[Example AOM model]]"` |
-| `type` | if no model: one of the types in `Config.md` (laser, amplifier, aom, eom, shutter, fibre, lock, meter, slm, destination, beam_splitter, optics, rf_source, controller) | `aom` |
+| `type` | if no model: one of the types in `Config.md` (laser, amplifier, aom, eom, shutter, fibre, lock, meter, slm, chamber, beam_splitter, optics, rf_source, controller) | `aom` |
 | `experiment` | which experiment(s); needed only on lasers and electronics, others inherit it | `[main]` |
 | `location` | table or rack; becomes a group on the map (for a fibre: its input end) | `Laser table` |
 | `output_location` | fibres only: where the output end is | `Chamber table` |

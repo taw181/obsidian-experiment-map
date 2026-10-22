@@ -30,14 +30,22 @@ at least once.
    open PowerShell and run:
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File "$HOME\Downloads\install.ps1" -Vault "C:\path\to\your vault"
+   cd "C:\path\to\your vault"
+   powershell -ExecutionPolicy Bypass -File .\install.ps1
    ```
 
 **macOS and Linux**
 
+In a terminal, from your vault's folder (or any folder inside it):
+
 ```sh
-curl -fsSL https://github.com/taw181/obsidian-experiment-map/releases/latest/download/install.sh | sh -s -- "/path/to/your vault"
+curl -fsSL https://github.com/taw181/obsidian-experiment-map/releases/latest/download/install.sh | sh
 ```
+
+The scripts install into the vault the current folder is in, so you can run
+them from anywhere inside it, for example the root of a git-synced vault. To
+install into a different vault, pass its path: `-Vault "C:\path\to\vault"` /
+`sh -s -- "/path/to/vault"`.
 
 The script asks whether to install the Claude skill too (answer **N** if you
 don't use Claude). Then, in Obsidian:
@@ -66,10 +74,19 @@ particular release.
 
 ## Your first map
 
+New to the map? Run **Experiment map: Start getting started guide** from the
+command palette. A panel in the right sidebar walks you through building a small
+practice map, step by step, in its own folder (`Experiment map practice/`) that
+never touches your lab's map. It ticks each step off as you do it. Afterwards
+the **Practice** switch in the map's toolbar shows it again.
+
+Or, straight into your own map:
+
 1. Press **+** in the map's toolbar (or run "Experiment map: New component").
-   Make a laser: type `laser`, a location such as `Laser table`.
+   Make a laser: set **Type** to `laser` and **Location** to something like
+   `Laser table`.
 2. Select the laser's box and press **+** again: the new component is fed from
-   it. Make an AOM, then a destination (`destination`, e.g. your chamber).
+   it. Make an AOM, then a chamber (**Type** `chamber`).
 3. Open a note to see and edit its properties. A component only says what
    *feeds* it, as a quoted link:
 

@@ -41,3 +41,24 @@
 .em-legend-box.is-problem { border-style: dashed; }
 .em-error { padding: 6px 10px; border-bottom: 1px solid var(--background-modifier-border); color: var(--text-error); background: var(--background-primary-alt); font-size: var(--font-ui-small); }
 .em-error.is-hidden { display: none; }
+.em-guide { font-size: var(--font-ui-small); }
+.em-guide-title { margin: 0 0 2px; }
+.em-guide-status { color: var(--text-muted); margin-bottom: 8px; }
+.em-guide-status a { cursor: pointer; }
+.em-guide-step { padding: 4px 0; border-top: 1px solid var(--background-modifier-border); }
+.em-guide-step.is-done { color: var(--text-success); }
+.em-guide-step.is-later { color: var(--text-muted); }
+.em-guide-current { border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); padding: 8px 10px; margin: 6px 0; background: var(--background-secondary); }
+.em-guide-current h5 { margin: 0 0 4px; font-size: var(--font-ui-medium); }
+.em-guide-label { font-size: var(--font-ui-smaller); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 10px 0 2px; }
+.em-guide-task { display: flex; gap: 6px; align-items: flex-start; margin: 4px 0; }
+.em-guide-task.is-done { color: var(--text-success); }
+.em-guide-mark { flex-shrink: 0; width: 1.2em; }
+.em-guide-text { min-width: 0; overflow-wrap: anywhere; }
+.em-guide-text p { margin: 0 0 4px; }
+.em-guide-text pre { margin: 4px 0; }
+.em-guide-text ul { margin: 2px 0 4px; padding-left: 1.4em; }
+.em-guide-task-head { font-weight: var(--font-semibold); margin-bottom: 2px; }
+.em-guide-hint { margin: 8px 0 0; padding: 6px 8px; border-left: 3px solid var(--color-orange); background: rgba(var(--color-orange-rgb), 0.12); border-radius: var(--radius-s); }
+.em-guide-hint p { margin: 0; }
+.em-guide button { margin-top: 6px; }

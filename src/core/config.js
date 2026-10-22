@@ -19,7 +19,7 @@ export const DEFAULT_CONFIG = {
     shutter: { category: 'optical', color: '#c06a6a' },
     fibre: { category: 'optical', color: '#3a9ad9', link: true },
     lock: { category: 'optical', color: '#9a8a5a' },
-    destination: { category: 'optical', color: '#8a8a8a', shape: 'round', subtitle: false },
+    chamber: { category: 'optical', color: '#8a8a8a', shape: 'round', subtitle: false },
     rf_source: { category: 'electronics', source: true, color: '#9070c0' },
     controller: { category: 'electronics', source: true, color: '#708090' },
   },

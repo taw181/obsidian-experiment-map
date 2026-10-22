@@ -7,6 +7,9 @@ import { setupVault } from './setup.js';
 import { sync, loadInputs, buildOutputs, DEFAULT_CONFIG_PATH } from '../core/sync.js';
 import { noteName } from '../core/notes.js';
 import { layoutKeys, legacyLayoutKeys } from './elements.js';
+import { PRACTICE_CONFIG_PATH } from '../core/guide.js';
+import { loadLocal, saveLocal } from './local.js';
+import { GuideView, GUIDE_VIEW_TYPE, startGuide } from './guide-view.js';
 
 const DEFAULT_SETTINGS = { configPath: DEFAULT_CONFIG_PATH };
 
@@ -20,23 +23,43 @@ export default class ExperimentMapPlugin extends Plugin {
     this.channelSources = {};
     this.syncing = null;
     this.shownNotices = new Set();
+    // 'real' or 'practice': which map the view and the commands work on.
+    this.activeMap = loadLocal(this.app, 'activeMap') === 'practice' ? 'practice' : 'real';
+    this.hasPractice = false;
 
     this.registerView(VIEW_TYPE, leaf => new MapView(leaf, this));
+    this.registerView(GUIDE_VIEW_TYPE, leaf => new GuideView(leaf, this));
+    this.startGuide = () => startGuide(this);
     this.addRibbonIcon('map', 'Open experiment map', () => this.openMap());
     this.addCommand({ id: 'open', name: 'Open', callback: () => this.openMap() });
     this.addCommand({ id: 'sync', name: 'Sync', callback: () => this.sync() });
     this.addCommand({ id: 'setup-vault', name: 'Set up this vault', callback: () => setupVault(this) });
+    this.addCommand({ id: 'start-guide', name: 'Start getting started guide', callback: () => this.startGuide() });
     registerEditCommands(this);
 
     this.registerEvent(this.app.vault.on('rename', (file, oldPath) => this.onRename(file, oldPath)));
     this.registerEvent(this.app.vault.on('modify', file => {
       if (file.path === this.layout.path) this.layout.load().then(() => this.refreshViews());
     }));
-    this.app.workspace.onLayoutReady(() => this.loadGraph().catch(e => { if (!e.missing) console.error('experiment-map', e); }));
+    this.app.workspace.onLayoutReady(() => this.loadGraph().catch(e => { if (!e.missing && !e.stale) console.error('experiment-map', e); }));
+  }
+
+  configPath() {
+    return this.activeMap === 'practice' ? PRACTICE_CONFIG_PATH : this.settings.configPath;
   }
 
   async loadGraph() {
-    const inputs = await loadInputs(this.io, { configPath: this.settings.configPath, offline: true });
+    this.hasPractice = await this.app.vault.adapter.exists(PRACTICE_CONFIG_PATH);
+    // The practice folder went away (a pull, a delete): back to the real map.
+    if (this.activeMap === 'practice' && !this.hasPractice) {
+      this.layout.discard();
+      this.setActiveMap('real');
+    }
+    const configPath = this.configPath();
+    const inputs = await loadInputs(this.io, { configPath, offline: true });
+    // The map was switched while this one loaded; the load for the new one is
+    // on its way, and this result must not replace it.
+    if (configPath !== this.configPath()) throw Object.assign(new Error('map switched while loading'), { stale: true });
     const { graph } = buildOutputs(inputs);
     this.config = inputs.config;
     this.channelSources = inputs.channelSources;
@@ -51,7 +74,7 @@ export default class ExperimentMapPlugin extends Plugin {
     if (this.syncing) return this.syncing;
     this.syncing = (async () => {
       try {
-        const r = await sync(this.io, { configPath: this.settings.configPath });
+        const r = await sync(this.io, { configPath: this.configPath() });
         // When the view syncs by itself, repeat a notice (e.g. GitHub rate limit) only once per session.
         for (const n of r.notices) {
           if (quiet) this.noticeOnce(`Experiment map: ${n}`);
@@ -72,6 +95,23 @@ export default class ExperimentMapPlugin extends Plugin {
       }
     })();
     return this.syncing;
+  }
+
+  setActiveMap(which) {
+    this.activeMap = which;
+    saveLocal(this.app, 'activeMap', which);
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) leaf.view.resetForMap?.();
+  }
+
+  // Shows the real or the practice map, saving any pending layout first so a
+  // drag just before the switch lands in the map it was made on.
+  async showMap(which) {
+    if (which !== this.activeMap) {
+      await this.layout.flush();
+      this.setActiveMap(which);
+      this.refreshViews();
+    }
+    await this.openMap();
   }
 
   noticeOnce(text) {

@@ -3,10 +3,10 @@
 #
 #   sh install.sh [VAULT] [--claude | --no-claude] [--version X.Y.Z] [--from DIR_OR_URL]
 #
-# VAULT defaults to the current folder. Re-run it to update. --claude also
-# installs the Claude skill (and the CLI it uses); once installed, updates keep
-# it current. --from takes the files from a folder or URL instead of the
-# latest GitHub release (for testing a local build).
+# VAULT defaults to the vault the current folder is in. Re-run it to update.
+# --claude also installs the Claude skill (and the CLI it uses); once
+# installed, updates keep it current. --from takes the files from a folder or
+# URL instead of the latest GitHub release (for testing a local build).
 
 set -u
 
@@ -25,10 +25,10 @@ Install or update the Experiment map plugin in an Obsidian vault (macOS, Linux).
 
   sh install.sh [VAULT] [--claude | --no-claude] [--version X.Y.Z] [--from DIR_OR_URL]
 
-VAULT defaults to the current folder. Re-run it to update. --claude also
-installs the Claude skill (and the CLI it uses); once installed, updates keep
-it current. --from takes the files from a folder or URL instead of the
-latest GitHub release (for testing a local build).
+VAULT defaults to the vault the current folder is in. Re-run it to update.
+--claude also installs the Claude skill (and the CLI it uses); once
+installed, updates keep it current. --from takes the files from a folder or
+URL instead of the latest GitHub release (for testing a local build).
 USAGE
 }
 
@@ -51,8 +51,17 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-[ -n "$vault" ] || vault=$PWD
-if [ ! -d "$vault/.obsidian" ]; then
+if [ -z "$vault" ]; then
+  # The vault this folder is in: the nearest folder up with a .obsidian.
+  vault=$PWD
+  while [ ! -d "$vault/.obsidian" ] && [ "$vault" != / ] && [ -n "$vault" ]; do
+    vault=$(dirname -- "$vault")
+  done
+  if [ ! -d "$vault/.obsidian" ]; then
+    echo "Not in an Obsidian vault: no .obsidian folder in $PWD or above it. Run this from inside the vault's folder, or pass the vault's path." >&2
+    exit 1
+  fi
+elif [ ! -d "$vault/.obsidian" ]; then
   echo "Not an Obsidian vault: $vault has no .obsidian folder. Open this folder in Obsidian first, or pass the vault's path." >&2
   exit 1
 fi

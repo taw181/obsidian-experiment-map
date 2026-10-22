@@ -8,6 +8,7 @@ import { chainOf } from '../core/trace.js';
 import { applyLegacy, gridSize, snap } from '../core/layout.js';
 import { setupVault } from './setup.js';
 import { routeFibres, toSegments } from './route.js';
+import { PRACTICE_CONFIG_PATH } from '../core/guide.js';
 
 export const VIEW_TYPE = 'experiment-map';
 
@@ -84,13 +85,27 @@ export class MapView extends ItemView {
     this.errorEl.createSpan({ text: 'This vault has no experiment map yet. ' });
     const b = this.errorEl.createEl('button', { text: 'Set up', cls: 'em-chip' });
     b.addEventListener('click', () => setupVault(this.plugin));
+    const t = this.errorEl.createEl('button', { text: 'Try the practice map', cls: 'em-chip' });
+    t.addEventListener('click', () => this.plugin.startGuide());
+    if (this.plugin.hasPractice) {
+      const p = this.errorEl.createEl('button', { text: 'Show the practice map', cls: 'em-chip' });
+      p.addEventListener('click', () => this.plugin.showMap('practice'));
+    }
     this.errorEl.removeClass('is-hidden');
+  }
+
+  // Another map is about to be drawn: forget this one's viewport, selection and chips.
+  resetForMap() {
+    this.fitted = false;
+    this.selected = null;
+    this.state.experiments = null;
+    this.knownExperiments = [];
   }
 
   isMapFile(path) {
     // Checked first: with no map yet there is no config, and a Config.md that
     // arrives (git pull, made by hand) must still bring the view to life.
-    if (path === this.plugin.settings.configPath) return true;
+    if (path === this.plugin.settings.configPath || path === PRACTICE_CONFIG_PATH) return true;
     const c = this.plugin.config;
     if (!c) return false;
     return path.startsWith(`${c.components_folder}/`) || path.startsWith(`${c.models_folder}/`);
@@ -107,6 +122,7 @@ export class MapView extends ItemView {
     try {
       loaded = await this.plugin.loadGraph();
     } catch (e) {
+      if (e.stale) return;
       if (e.missing) {
         this.showEmptyState();
         return;
@@ -145,8 +161,14 @@ export class MapView extends ItemView {
       this.cy.elements().remove();
       this.cy.add(els);
     });
-    if (!this.fitted) {
+    if (!this.fitted && els.length) {
+      // Fit once there is something to fit (a new practice map starts empty),
+      // without blowing a map of one or two boxes up to full size.
       this.cy.fit(undefined, 40);
+      if (this.cy.zoom() > 1) {
+        this.cy.zoom(1);
+        this.cy.center();
+      }
       this.fitted = true;
     } else {
       this.cy.viewport({ zoom, pan });
@@ -258,6 +280,13 @@ export class MapView extends ItemView {
       return b;
     };
     const toggled = () => { this.applyVisibility(); this.renderToolbar(); };
+
+    if (this.plugin.hasPractice) {
+      const maps = bar.createDiv('em-group');
+      maps.createSpan({ text: 'Map', cls: 'em-muted' });
+      chip(maps, 'Real', this.plugin.activeMap === 'real', () => this.plugin.showMap('real'), 'Your lab\'s map');
+      chip(maps, 'Practice', this.plugin.activeMap === 'practice', () => this.plugin.showMap('practice'), 'The getting-started practice map');
+    }
 
     const layers = bar.createDiv('em-group');
     layers.createSpan({ text: 'Layers', cls: 'em-muted' });
@@ -378,7 +407,8 @@ export class MapView extends ItemView {
     row(line(cfg.control_color, 'dotted'), 'control (layer: Control)');
     row(box('is-optical'), 'optical component');
     row(box('is-electronics'), 'electronics');
-    row(box('is-round'), 'destination');
+    const round = Object.keys(cfg.types).filter(t => cfg.types[t]?.shape === 'round');
+    if (round.length) row(box('is-round'), round.join(', '));
     row(box('is-broken'), 'status: broken');
     row(box('is-problem'), '⚠ has a problem');
   }

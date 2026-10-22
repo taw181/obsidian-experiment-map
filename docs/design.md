@@ -32,6 +32,7 @@ Experiment map/
   Sync report.md          GENERATED: list of problems
   layout.json             node positions, written by the view
   .hardware/              channel-source cache (a dot folder, hidden from Obsidian)
+Experiment map practice/  the getting-started practice map: same layout, own Config.md
 .obsidian/plugins/experiment-map/
   main.js manifest.json styles.css    the plugin
   cli.js                              the CLI (installed with the optional Claude skill)
@@ -59,7 +60,7 @@ names a port or item of the component.
 | `template: <name>` | template always added when a component of this type is created |
 
 Built-in types: `laser`, `amplifier`, `aom`, `eom`, `shutter`, `fibre` (link),
-`lock`, `destination` (round, no subtitle), `rf_source`, `controller` (`laser`,
+`lock`, `chamber` (round, no subtitle), `rf_source`, `controller` (`laser`,
 `rf_source` and `controller` are sources). The starter `Config.md` adds
 `beam_splitter`, `optics`, `meter` and `slm`, and gives `fibre` the `fibre` template.
 
@@ -360,6 +361,7 @@ RF and control edges are not routed.
 | New component | also the toolbar `+`; see below |
 | New model | asks name, type, optional parent; writes `<models_folder>/<name>.md` with `extends`, `type`, empty `manuals` |
 | Make model from this component | for the active component note; see below |
+| Start getting started guide | see Getting started guide |
 
 **New component** asks for a model ("(no model)" first), then name, location
 (suggested; pre-filled from the selection), type (if the model has none),
@@ -383,10 +385,68 @@ Connections are edited as note properties. Renaming a component note moves its
 the configured `Config.md` path, `Config.md` from `templates/Config.md`, the
 default components and models folders, and `README.md` beside `Config.md` from
 `templates/README.md`. It lists what it created (or says the vault is already set
-up) and reloads the map. **Empty state:** with no `Config.md`, the view shows
-"This vault has no experiment map yet." and a **Set up** button, and background
+up, and when it created something, points to the getting started guide),
+switches the view to the real map and reloads it. **Empty state:** with no `Config.md`, the view shows
+"This vault has no experiment map yet." with **Set up**, **Try the practice
+map** (starts the guide) and, if a practice map exists, **Show the practice map**, and background
 syncs stay silent. The `Config.md` path is a plugin setting (default
 `Experiment map/Config.md`); the CLI takes `--config`.
+
+## Getting started guide
+
+A right-sidebar panel that teaches the map by having a new user build a fixed
+practice map in six steps. Logic in `src/core/guide.js` (steps, checks, hints,
+the practice `Config.md`); panel and command in `src/plugin/guide-view.js`.
+
+**Practice map.** `Experiment map practice/` holds its own `Config.md`
+(`practiceConfig()`: the starter settings with the practice folders and
+`experiments: [practice]`), `Components/`, `Models/`, `layout.json` and generated
+files. The real map never reads it. Every practice component name starts with
+"Practice", so Obsidian's vault-wide link resolution never confuses a practice
+note with a real one.
+
+**Which map is showing.** `plugin.activeMap` (`real` or `practice`) picks the
+`Config.md` that the view, **+**, the edit commands and Sync use. The toolbar
+shows a **Map: Real / Practice** chip pair when the practice `Config.md` exists.
+Switching saves a pending `layout.json` write first, then forgets the view's
+viewport, selection and experiment chips. If the practice map is active and its
+`Config.md` disappears, the view falls back to the real map.
+
+**Per-machine state.** The active map and the guide's progress
+(`{done: ["<step>.<task>"]}`) are kept in Obsidian's local storage for the vault,
+never in the vault: shared vaults commit the plugin folder, `data.json` included.
+
+**Command.** "Start getting started guide": with a run in progress on this
+machine and a practice folder, asks *Continue where you left off* / *Start
+over*; otherwise, if the practice folder exists, asks before resetting; with no
+folder, resets straight away. Reset deletes the folder (dot folders too) and
+writes a fresh `Config.md` and note folders; it then shows the practice map and
+opens the panel.
+
+**Steps and checks.** Six steps (laser to chamber; an AOM in between; VCO,
+control board and PC; the chamber on its own table; a fibre across; a model from
+the AOM), each with tasks checked against the practice graph. The panel loads the
+practice map itself and re-checks on every change in the practice folder. Tasks
+of the current step tick when their check passes and stay ticked (later steps
+undo earlier states); a complete step moves on. Tasks that create a component
+list the New component form's fields by their labels (**Name**, **Location**,
+**Type**, **Experiment**), and say that **+** with a component selected makes a
+new one fed from it. A ticked task that created a
+component whose note is now gone (someone else's reset arriving through git)
+makes the panel say the practice map has changed and offer **Start over**.
+
+**Panel.** Header and "Practice map · step N of 6 · show practice map"; done
+steps one line each; the current step with **Do** (each task under its own
+heading, such as *Adding a laser*, and ticked on its own), **Why**, **Look for**
+and hints; later steps by title. Hints: a near-miss
+note name (the same ignoring case and runs of spaces); an expected value that is
+off (a wrong `type`; a location that matches only ignoring case and spaces; no
+beam input, or one besides the expected one; a model not named *Practice AOM
+model*), never for a value the user hasn't changed yet; and the map's problems
+for the step's components, reworded where the fix is known. "has no inputs" and
+"nothing upstream" are left out when another hint or problem gives the cause. After
+step 6: what was built, where the real map and its how-to note are (or how to
+set one up), and how to view the practice map again.
 
 ## layout.json
 

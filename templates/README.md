@@ -20,6 +20,9 @@ icon in the left ribbon or "Experiment map: Open".
   inherit from their model.
 - `map.yaml` and `Sync report.md` are generated. So are the pages in
   `Channels/`, if `Config.md` names any channel sources. Don't edit them.
+- Link a component from your lab book (`[[Cooling shutter]]`): the bottom of
+  its note lists every page that links to it, newest first, with the lines
+  that mention it.
 - `layout.json` stores where boxes have been dragged. A dropped box snaps to an
   invisible grid (`grid` in `Config.md`).
 
@@ -83,7 +86,7 @@ select something on its chain.
 New fibres get the `fibre` template: `output_location`, `fibre_type`,
 `input_lens`, `output_lens`, `input_power_mW`, `output_power_mW`. Record the
 nominal (expected) powers there, and link notes that re-couple or measure the
-fibre to it, so its history collects in its backlinks. Fibres of one part
+fibre to it, so its history collects at the bottom of its note. Fibres of one part
 number can share a model note that holds `fibre_type`.
 
 ## Beam splitters and ports

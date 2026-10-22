@@ -124,7 +124,7 @@ export function renderPanel(el, name, ctx) {
   const lb = section(el, 'Recent lab book');
   if (!ctx.mentions.length) lb.createDiv({ cls: 'em-muted', text: 'no pages link here yet' });
   for (const p of ctx.mentions.slice(0, 5)) link(lb.createDiv(), noteName(p), () => ctx.openLink(p));
-  if (ctx.mentions.length > 5) lb.createDiv({ cls: 'em-muted', text: `+ ${ctx.mentions.length - 5} more (see Backlinks)` });
+  if (ctx.mentions.length > 5) link(lb.createDiv({ cls: 'em-muted' }), `+ ${ctx.mentions.length - 5} more in the note`, () => ctx.openLink(c.path));
 
   const open = el.createEl('button', { text: 'Open note', cls: 'mod-cta' });
   open.addEventListener('click', () => ctx.openLink(c.path));

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { nodeIo, findMentions } from './node-io.js';
+import { nodeIo, findMentions, findBacklinks } from './node-io.js';
 import { sync, check, loadInputs, buildOutputs, DEFAULT_CONFIG_PATH, ConfigError } from '../core/sync.js';
 import { formatTrace, upstream, downstream } from '../core/trace.js';
 import { formatFind, formatChannels, noteExcerpt } from '../core/query.js';
@@ -13,6 +13,8 @@ commands:
   trace NAME          what feeds NAME (beam, rf, control), with lab book pages
   trace --down NAME   what NAME feeds or drives
   trace --notes NAME  the same, with the start of each note on the chain
+  backlinks NAME      every page outside the map folder linking to component or
+                      model NAME, newest first, with the lines that link
   find [FILTER ...]   components matching every filter, one line each
   channels [FILTER ...] [--unused]
                       control channels matching every filter, one line each
@@ -108,6 +110,29 @@ async function main() {
     }
     const componentsFolder = inputs.config.components_folder;
     console.log(formatTrace(graph, name, { direction: opts.down ? 'down' : 'up', mentions, componentsFolder, excerpts, linkTypes: linkTypes(inputs.config) }));
+    return 0;
+  }
+
+  if (command === 'backlinks') {
+    const name = args.join(' ').trim();
+    if (!name) {
+      process.stderr.write(USAGE);
+      return 2;
+    }
+    const inputs = await loadInputs(io, { configPath: opts.configPath, offline: true });
+    const { graph } = buildOutputs(inputs);
+    if (!graph.components[name] && !graph.models[name]) {
+      console.error(`no component or model named '${name}'`);
+      const close = [...Object.keys(graph.components), ...Object.keys(graph.models)].filter(n => n.toLowerCase().includes(name.toLowerCase()));
+      if (close.length) console.error(`did you mean: ${close.join(', ')}`);
+      return 1;
+    }
+    const pages = await findBacklinks(opts.vault, name, inputs.config.output_folder);
+    if (!pages.length) console.log(`no pages link to ${name}`);
+    for (const p of pages) {
+      console.log(p.path);
+      for (const l of p.lines) console.log(`  ${l.line + 1}: ${l.segments.map(s => s.text).join('')}`);
+    }
     return 0;
   }
 

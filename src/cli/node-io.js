@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { LINK_TARGETS, sortMentions } from '../core/mentions.js';
+import { LINK_TARGETS, linkName, linkLines, sortMentions } from '../core/mentions.js';
 
 const SKIP = new Set(['node_modules']);
 
@@ -56,10 +56,22 @@ export async function findMentions(root, names, excludeFolder) {
   for (const f of await walkMarkdown(root, '')) {
     if (f.path.startsWith(`${excludeFolder}/`)) continue;
     for (const m of f.text.matchAll(LINK_TARGETS)) {
-      const target = m[1].trim().split('/').pop().replace(/\.md$/i, '');
+      const target = linkName(m[1]);
       if (wanted.has(target)) (out[target] ??= []).push(f.path);
     }
   }
   for (const k of Object.keys(out)) out[k] = sortMentions(out[k]);
   return out;
+}
+
+// Pages outside the map folder that link to `name`, newest first, each with
+// the lines that link: [{path, lines: [{line, segments}]}].
+export async function findBacklinks(root, name, excludeFolder) {
+  const pages = {};
+  for (const f of await walkMarkdown(root, '')) {
+    if (f.path.startsWith(`${excludeFolder}/`)) continue;
+    const lines = linkLines(f.text, t => linkName(t) === name);
+    if (lines.length) pages[f.path] = lines;
+  }
+  return sortMentions(Object.keys(pages)).map(path => ({ path, lines: pages[path] }));
 }

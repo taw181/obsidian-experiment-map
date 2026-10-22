@@ -5,6 +5,8 @@ An [Obsidian](https://obsidian.md) plugin that draws a clickable map of a lab
 channels that drive them) from ordinary notes in your vault. Each component
 is one note; its properties say what feeds it. Click a box to see everything
 upstream and downstream of it, with links to the notes that mention it.
+Each component's note lists every lab book page that links to it, with the
+lines that mention it.
 
 The map works in any vault and doesn't need a terminal once installed.
 Optionally, a [Claude Code](https://claude.com/claude-code) skill lets Claude
@@ -167,7 +169,7 @@ other code you run, and review changes to them in a shared vault.
 
 The skill teaches [Claude Code](https://claude.com/claude-code) to:
 - answer questions from the map with a small command-line tool, using its
-  `trace`, `find` and `channels` commands;
+  `trace`, `backlinks`, `find` and `channels` commands;
 - fill the map in by interviewing you, walking each beam back to its laser;
 - fix the problems the map reports.
 
@@ -189,6 +191,7 @@ The command-line tool also works on its own, from the vault folder:
 ```sh
 node .obsidian/plugins/experiment-map/cli.js check
 node .obsidian/plugins/experiment-map/cli.js trace --notes "Cooling shutter"
+node .obsidian/plugins/experiment-map/cli.js backlinks "Cooling shutter"
 node .obsidian/plugins/experiment-map/cli.js find type=aom location~"laser table"
 ```
 

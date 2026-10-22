@@ -62,3 +62,12 @@
 .em-guide-hint { margin: 8px 0 0; padding: 6px 8px; border-left: 3px solid var(--color-orange); background: rgba(var(--color-orange-rgb), 0.12); border-radius: var(--radius-s); }
 .em-guide-hint p { margin: 0; }
 .em-guide button { margin-top: 6px; }
+.em-note-backlinks { margin: 2em 0 1em; padding-top: 0.75em; border-top: 1px solid var(--background-modifier-border); font-size: var(--font-text-size); }
+.em-note-backlinks-title { font-weight: var(--font-semibold); margin-bottom: 0.5em; }
+.em-note-backlinks-count { margin-left: 0.5em; color: var(--text-faint); font-weight: normal; font-size: var(--font-ui-small); }
+.em-note-backlinks-page { margin-bottom: 0.6em; }
+.em-note-backlinks-name { color: var(--link-color); cursor: pointer; text-decoration: none; }
+.em-note-backlinks-name:hover { text-decoration: underline; }
+.em-note-backlinks-line { margin: 2px 0 0 1em; padding: 2px 6px; border-radius: var(--radius-s); color: var(--text-muted); font-size: var(--font-ui-small); cursor: pointer; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.em-note-backlinks-line:hover { background: var(--background-modifier-hover); }
+.em-note-backlinks-hit { color: var(--text-normal); background: var(--text-highlight-bg); border-radius: 2px; }

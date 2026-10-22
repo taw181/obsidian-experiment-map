@@ -10,6 +10,7 @@ import { layoutKeys, legacyLayoutKeys } from './elements.js';
 import { PRACTICE_CONFIG_PATH } from '../core/guide.js';
 import { loadLocal, saveLocal } from './local.js';
 import { GuideView, GUIDE_VIEW_TYPE, startGuide } from './guide-view.js';
+import { NoteBacklinks } from './note-backlinks.js';
 
 const DEFAULT_SETTINGS = { configPath: DEFAULT_CONFIG_PATH };
 
@@ -36,6 +37,7 @@ export default class ExperimentMapPlugin extends Plugin {
     this.addCommand({ id: 'setup-vault', name: 'Set up this vault', callback: () => setupVault(this) });
     this.addCommand({ id: 'start-guide', name: 'Start getting started guide', callback: () => this.startGuide() });
     registerEditCommands(this);
+    this.noteBacklinks = new NoteBacklinks(this);
 
     this.registerEvent(this.app.vault.on('rename', (file, oldPath) => this.onRename(file, oldPath)));
     this.registerEvent(this.app.vault.on('modify', file => {
@@ -67,6 +69,7 @@ export default class ExperimentMapPlugin extends Plugin {
     this.layout.setPath(`${inputs.config.output_folder}/layout.json`);
     this.layout.setKeep(layoutKeys(graph, inputs.config), legacyLayoutKeys(graph, inputs.config));
     if (!this.layout.loaded) await this.layout.load();
+    this.noteBacklinks.updateAll();
     return { config: inputs.config, graph, notices: inputs.notices };
   }
 

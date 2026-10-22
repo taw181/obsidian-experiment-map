@@ -17,9 +17,10 @@ Use the CLI, not `map.yaml`, the channel pages or a sweep of note files. A note 
 
 1. `CLI check`. If it says stale, run `CLI sync` (or `CLI sync --offline` with no network), then carry on.
 2. **Chains and troubleshooting:** `CLI trace --notes "X"` (upstream) or `CLI trace --down --notes "X"`. Every component on the chain comes with type, status, location, channel name and address, its problems (⚠), the first paragraph of its note and its newest linked pages. Answer from it; open a note only when its excerpt says `(+N more lines)` and the rest looks relevant. Note paths are `<components folder>/<name>.md` unless the trace prints another.
-3. **Lists of components:** `CLI find FILTER ...`. A filter is `key=value` (exact) or `key~text` (contains), ignoring case; filters combine with AND; a bare word matches the name. Keys are anything in `map.yaml`, resolved: `find type=aom location~"laser table"`, `find wavelength_nm=780`, `find drives~cooling`, `find status=spare`.
-4. **Channels** (only when `Config.md` has channel sources): `CLI channels FILTER ...` over `experiment`, `name`, `address`, `board`, `kind`, `unit`, `comment`, `disabled`, `source`, `used_by` and any extra key the source adds: `channels board=Dev1`, `channels address~port0/line3`, `channels name~shutter`, `channels experiment=<exp> --unused`. Each line gives address, kind, users (→), `[disabled reasons]` and the comment.
-5. `no component has 'k'` means no component sets that key: check the spelling against `map.yaml`'s keys, not the note.
+3. **History of one component or model:** `CLI backlinks "X"` prints every lab book page linking to it (newest first, by path), each with the lines that link. Read a page only when its lines look relevant.
+4. **Lists of components:** `CLI find FILTER ...`. A filter is `key=value` (exact) or `key~text` (contains), ignoring case; filters combine with AND; a bare word matches the name. Keys are anything in `map.yaml`, resolved: `find type=aom location~"laser table"`, `find wavelength_nm=780`, `find drives~cooling`, `find status=spare`.
+5. **Channels** (only when `Config.md` has channel sources): `CLI channels FILTER ...` over `experiment`, `name`, `address`, `board`, `kind`, `unit`, `comment`, `disabled`, `source`, `used_by` and any extra key the source adds: `channels board=Dev1`, `channels address~port0/line3`, `channels name~shutter`, `channels experiment=<exp> --unused`. Each line gives address, kind, users (→), `[disabled reasons]` and the comment.
+6. `no component has 'k'` means no component sets that key: check the spelling against `map.yaml`'s keys, not the note.
 
 In a troubleshooting answer, list channels with address and board, flag any ⚠ on the chain, and say what the map doesn't cover.
 

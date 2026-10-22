@@ -39,7 +39,8 @@ Experiment map practice/  the getting-started practice map: same layout, own Con
 ```
 
 Notes are read recursively from the two note folders. Backlinks from lab book
-pages are each component's history.
+pages are each component's history: any note outside the output folder that
+links to a component or model note is a lab book page.
 
 ## Component notes
 
@@ -287,6 +288,7 @@ plain lines, to keep reads short.
 | `trace NAME` | upstream tree (beam, RF, control): type, status, location, channel and address, problems, and the 3 newest lab book pages per component |
 | `trace --down NAME` | the same, downstream |
 | `trace --notes NAME` | adds each member's first body paragraph on one line, cut at 200 characters, with `(+N more lines)` |
+| `backlinks NAME` | every lab book page linking to component or model NAME, newest first, by path, each followed by its linking lines as `  <line number>: <text>`, cleaned as in the note's Mentions section |
 | `find [FILTER ...]` | matching components: name, type, status, location, model, each filtered key, a non-default note path, problem count; then a count |
 | `channels [FILTER ...] [--unused]` | matching channels (with `--unused`, used by nothing): experiment, name, address, kind, `→ used_by`, `[disabled]`, `# comment`; then a count |
 
@@ -298,8 +300,9 @@ controller `(no controller found)`, and shows a note path only when it isn't
 `<components_folder>/<name>.md`. Lab book pages exclude the output folder and
 sort newest first by a `YYYY-MM-DD` at the start of the filename.
 
-Exit codes: 0 success; 1 stale (`check`) or unknown component (`trace`, with
-suggestions); 2 usage; 3 configuration error or crash.
+Exit codes: 0 success; 1 stale (`check`), unknown component (`trace`) or
+unknown component or model (`backlinks`), with suggestions; 2 usage; 3
+configuration error or crash.
 
 ## The map view
 
@@ -340,7 +343,8 @@ RF and control edges are not routed.
   (type, experiment, location, status first; `manuals`, `tags`, `aliases`,
   `cssclasses` hidden) with inherited ones greyed and labelled "from <model>",
   "(upstream)" or "(default)"; inputs as links (channels with their address);
-  outputs; manuals; the 5 newest lab book pages linking here, "+ N more"; "Open note".
+  outputs; manuals; the 5 newest lab book pages linking here, "+ N more in the
+  note" (opens it); "Open note".
 - **Toolbar**: layers (Beams, RF, Control); Show: a chip per experiment (from
   `channel_sources` and components), per `filter_tags` entry, and Spare/retired;
   search, which selects and centres a component (both fibre ends); `⚠ N`, a
@@ -350,6 +354,24 @@ RF and control edges are not routed.
   in the selected chain), if it is an unselected `hide_line` fibre, or if either
   end is hidden.
 - On mobile, a one-time notice says the view is untested there.
+
+## Mentions section in notes
+
+At the foot of every note in the components and models folders of the active
+map, in reading and editing view, the plugin draws a **Mentions** section: every
+lab book page linking to the note, newest first (as for `trace`), with a count.
+Under each page name come all its lines that link here, cleaned for reading
+(quote, heading, list and task markers dropped; each `[[link]]` shown as its
+text, links to this note highlighted) and cut to three lines. A page name opens
+the page; a line opens it at that line (Ctrl/Cmd-click: a new tab). No links:
+"no pages link here yet".
+
+It is display only: nothing is written to the note, so it never touches git or
+`## port` headings. The list comes from Obsidian's link index, so it follows
+link edits elsewhere without a sync. Names are drawn at once and lines once the
+pages are read (from Obsidian's file cache); the cost scales with the number
+of pages linking to the open note, not with the vault. It sits before
+Obsidian's own "Backlinks in document", if that is on.
 
 ## Editing workflow and commands
 

@@ -121,7 +121,7 @@ export function renderPanel(el, name, ctx) {
     for (const entry of manuals) manualLink(m, entry);
   }
 
-  const lb = section(el, 'Recent lab book');
+  const lb = section(el, 'Recent mentions');
   if (!ctx.mentions.length) lb.createDiv({ cls: 'em-muted', text: 'no pages link here yet' });
   for (const p of ctx.mentions.slice(0, 5)) link(lb.createDiv(), noteName(p), () => ctx.openLink(p));
   if (ctx.mentions.length > 5) link(lb.createDiv({ cls: 'em-muted' }), `+ ${ctx.mentions.length - 5} more in the note`, () => ctx.openLink(c.path));

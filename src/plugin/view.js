@@ -1,4 +1,4 @@
-import { ItemView, Modal, Notice, Platform } from 'obsidian';
+import { ItemView, Modal, Notice, Platform, Setting, TFile } from 'obsidian';
 import cytoscape from 'cytoscape';
 import { buildStyle, readTheme } from './style.js';
 import { toElements } from './elements.js';
@@ -7,8 +7,9 @@ import { mentionsFor } from './obsidian-io.js';
 import { chainOf } from '../core/trace.js';
 import { applyLegacy, gridSize, snap } from '../core/layout.js';
 import { setupVault } from './setup.js';
-import { routeFibres, toSegments } from './route.js';
+import { routeLines, toSegments } from './route.js';
 import { PRACTICE_CONFIG_PATH } from '../core/guide.js';
+import { LINE_STYLES, lineStyle, lineStyleKeys, setLineStyles } from '../core/config.js';
 
 export const VIEW_TYPE = 'experiment-map';
 
@@ -210,9 +211,9 @@ export class MapView extends ItemView {
         this.plugin.layout.set(n.id(), [x + dx, y + dy]);
       });
     });
-    // Fibres are re-routed at most once a frame while anything moves.
+    // Lines are re-routed at most once a frame while anything moves.
     cy.on('position', 'node', () => {
-      if (this.routeFrame == null) this.routeFrame = requestAnimationFrame(() => { this.routeFrame = null; this.routeFibres(); });
+      if (this.routeFrame == null) this.routeFrame = requestAnimationFrame(() => { this.routeFrame = null; this.routeLines(); });
     });
     cy.on('viewport', () => this.positionBackground());
     cy.on('dbltap', 'node, edge.link', e => {
@@ -242,26 +243,33 @@ export class MapView extends ItemView {
         e.toggleClass('hidden', !on || e.source().hasClass('hidden') || e.target().hasClass('hidden'));
       });
     });
-    this.routeFibres();
+    this.routeLines();
     this.renderLegend();
   }
 
-  // Routes each shown fibre line around the shown boxes and markers (route.js).
-  // Hidden boxes don't count, so this runs again whenever visibility changes.
-  routeFibres() {
+  // Routes each shown line whose style avoids components around the shown
+  // boxes and markers (route.js). Hidden boxes don't count, so this runs again
+  // whenever visibility changes.
+  routeLines() {
     if (!this.cy) return;
-    const links = this.cy.edges('.link').filter(e => !e.hasClass('hidden'));
-    if (links.empty()) return;
+    const lines = this.cy.edges('.line-avoid_components').filter(e => !e.hasClass('hidden'));
+    if (lines.empty()) return;
     const boxes = this.cy.nodes().filter(n => !n.data('isGroup') && !n.hasClass('hidden')).map(n => {
       const { x1, y1, x2, y2 } = n.boundingBox({ includeLabels: true, includeOverlays: false });
       return { id: n.id(), x1, y1, x2, y2 };
     });
     const at = n => [n.position('x'), n.position('y')];
-    const fibres = links.map(e => ({ id: e.id(), from: at(e.source()), to: at(e.target()), ends: [e.source().id(), e.target().id()] }));
-    const routes = routeFibres(fibres, boxes);
-    this.cy.batch(() => fibres.forEach(f => {
-      const e = this.cy.getElementById(f.id);
-      const seg = routes[f.id] && toSegments(f.from, f.to, routes[f.id]);
+    // A beam leaving from a port starts at the port's side, not the box centre.
+    const start = e => {
+      const [x, y] = at(e.source());
+      const p = /^(-?[\d.]+)% (-?[\d.]+)%$/.exec(e.data('sourceEndpoint') ?? '');
+      return p ? [x + (p[1] / 100) * e.source().width(), y + (p[2] / 100) * e.source().height()] : [x, y];
+    };
+    const routed = lines.map(e => ({ id: e.id(), from: start(e), to: at(e.target()), centres: [at(e.source()), at(e.target())], ends: [e.source().id(), e.target().id()] }));
+    const routes = routeLines(routed, boxes);
+    this.cy.batch(() => routed.forEach(l => {
+      const e = this.cy.getElementById(l.id);
+      const seg = routes[l.id] && toSegments(...l.centres, routes[l.id]);
       if (!seg) {
         e.removeClass('routed');
         return;
@@ -322,6 +330,7 @@ export class MapView extends ItemView {
     chip(actions, '+', false, () => this.plugin.newComponent(this.selected), 'New component');
     chip(actions, 'Sync', false, () => this.plugin.sync(), 'Sync with the channel sources');
     chip(actions, 'Fit', false, () => this.cy.fit(this.cy.elements(':visible'), 40), 'Fit map to view');
+    chip(actions, '⚙', false, () => new SettingsModal(this.app, this.config, this.plugin.configPath()).open(), 'Map settings');
   }
 
   find(name) {
@@ -449,6 +458,46 @@ export class MapView extends ItemView {
     if (this.routeFrame != null) cancelAnimationFrame(this.routeFrame);
     this.cy?.destroy();
     this.cy = null;
+  }
+}
+
+const STYLE_LABELS = { straight: 'Straight', curved: 'Curved', right_angles: 'Right angles', avoid_components: 'Avoid components' };
+const KEY_LABELS = { beam: 'Beams', rf: 'RF', control: 'Control' };
+
+// Map settings shared by everyone: each change is written to Config.md at once,
+// and the view redraws when it sees the file change.
+class SettingsModal extends Modal {
+  constructor(app, config, configPath) {
+    super(app);
+    this.config = config;
+    this.configPath = configPath;
+  }
+
+  onOpen() {
+    this.titleEl.setText('Map settings');
+    new Setting(this.contentEl).setName('Line style').setHeading();
+    const styles = { ...this.config.line_styles };
+    for (const k of lineStyleKeys(this.config)) {
+      styles[k] = lineStyle(this.config, k);
+      new Setting(this.contentEl).setName(KEY_LABELS[k] ?? k[0].toUpperCase() + k.slice(1)).addDropdown(d => {
+        for (const s of LINE_STYLES) d.addOption(s, STYLE_LABELS[s]);
+        d.setValue(styles[k]);
+        d.onChange(async v => {
+          styles[k] = v;
+          const file = this.app.vault.getAbstractFileByPath(this.configPath);
+          if (!(file instanceof TFile)) {
+            new Notice(`Experiment map: ${this.configPath} not found`);
+            return;
+          }
+          await this.app.vault.process(file, text => setLineStyles(text, styles));
+        });
+      });
+    }
+    this.contentEl.createDiv({ cls: 'em-muted', text: `Saved in ${this.configPath}, so it changes the map for everyone who shares this vault.` });
+  }
+
+  onClose() {
+    this.contentEl.empty();
   }
 }
 

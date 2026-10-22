@@ -1,5 +1,5 @@
 import { parseWikilink, linkList, asList } from './wikilink.js';
-import { STATUSES, wavelengthColor } from './config.js';
+import { LINE_STYLES, STATUSES, lineStyleKeys, wavelengthColor } from './config.js';
 import { normAddress, channelTables } from './channels.js';
 
 const CONNECTIONS = ['beam_from', 'rf_from', 'control_from'];
@@ -55,6 +55,11 @@ export function buildGraph({ config, components: componentNotes, models: modelNo
 
   const pages = new Map(Object.entries(channelSources).map(([exp, src]) => [src.page, exp]));
   for (const src of Object.values(channelSources)) if (src.error) problem(null, `channel source '${src.experiment}': ${src.error}`);
+  const styleKeys = lineStyleKeys(config);
+  for (const [k, v] of Object.entries(config.line_styles)) {
+    if (!styleKeys.includes(k)) problem(null, `line_styles: '${k}' is not beam, rf, control or a link type`);
+    else if (!LINE_STYLES.includes(v)) problem(null, `line_styles: unknown style '${v}' for ${k} (use ${LINE_STYLES.join(', ')})`);
+  }
 
   // --- models -------------------------------------------------------------
   const resolvedModels = new Map();

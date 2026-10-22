@@ -1,11 +1,12 @@
-// Routes fibre lines around the boxes on the map. Cytoscape can't route
-// edges, but it draws a 'segments' edge through the bend points it is given,
-// so this works out the bend points and toSegments() converts them.
+// Routes lines whose style is avoid_components (fibres, by default) around the
+// boxes on the map. Cytoscape can't route edges, but it draws a 'segments' edge
+// through the bend points it is given, so this works out the bend points and
+// toSegments() converts them.
 //
 // A route runs along a sparse grid: the lines just outside each box (inflated
-// by MARGIN), the lines through the fibre's two ends, and the lines midway
+// by MARGIN), the lines through the line's two ends, and the lines midway
 // between those. A* over that grid finds the shortest path that turns least
-// (each turn costs BEND) and avoids running along a line an earlier fibre
+// (each turn costs BEND) and avoids running along a line an earlier one
 // already uses (SHARED per unit of overlap).
 
 export const MARGIN = 14;
@@ -61,7 +62,7 @@ class Heap {
   }
 }
 
-// Segments already taken by earlier fibres, by axis and the line they run along.
+// Segments already taken by earlier lines, by axis and the line they run along.
 class Used {
   constructor() { this.lines = [new Map(), new Map()]; }
   add(dir, at, a, b) {
@@ -80,7 +81,7 @@ class Used {
   }
 }
 
-// One fibre: the corner points between `from` and `to` ([x, y] each), or null
+// One line: the corner points between `from` and `to` ([x, y] each), or null
 // if there is no way round. Boxes that contain an end, even with their margin
 // taken off, don't count; a box whose margin alone covers an end loses its margin.
 function routeOne(from, to, boxes, used) {
@@ -165,14 +166,14 @@ function routeOne(from, to, boxes, used) {
   return corners;
 }
 
-// fibres: [{id, from: [x, y], to: [x, y], ends: [box id, box id]}]
+// lines: [{id, from: [x, y], to: [x, y], ends: [box id, box id]}]
 // boxes: [{id, x1, y1, x2, y2}]
-// Returns {fibre id: corners or null}. Fibres are routed in id order, so the
+// Returns {line id: corners or null}. Lines are routed in id order, so the
 // same map always gives the same routes.
-export function routeFibres(fibres, boxes) {
+export function routeLines(lines, boxes) {
   const used = new Used();
   const out = {};
-  for (const f of [...fibres].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+  for (const f of [...lines].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
     const ends = new Set(f.ends);
     out[f.id] = routeOne(f.from, f.to, boxes.filter(b => !ends.has(b.id)), used);
   }

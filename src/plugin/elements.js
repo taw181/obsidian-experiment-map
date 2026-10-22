@@ -1,5 +1,5 @@
 import { autoPlace, applyLegacy, gridSize, snap } from '../core/layout.js';
-import { isLinkType, wavelengthColor } from '../core/config.js';
+import { isLinkType, lineStyle, wavelengthColor } from '../core/config.js';
 import { asList } from '../core/wikilink.js';
 
 export const UNPLACED = 'Unplaced';
@@ -82,7 +82,8 @@ export function toElements(graph, config, positions, flagged) {
         label: `${warn ? '⚠ ' : ''}${c.name}`,
       };
       if (typeDef.color) data.outline = typeDef.color;
-      els.push({ group: 'edges', data, classes: c.props.hide_line === true ? 'beam link hide-line' : 'beam link' });
+      const style = `line-${lineStyle(config, c.props.type)}`;
+      els.push({ group: 'edges', data, classes: `beam link ${style}${c.props.hide_line === true ? ' hide-line' : ''}` });
       continue;
     }
     const sub = typeDef.subtitle === false ? '' : [c.props.type ?? 'no type', c.model].filter(Boolean).join(' · ');
@@ -111,7 +112,7 @@ export function toElements(graph, config, positions, flagged) {
     const data = { id: e.id, source, target, kind: e.kind, color: e.color, label: e.label ?? '' };
     const at = e.port && !link.has(e.from) ? endpoints[e.from][e.port] : null;
     if (at) data.sourceEndpoint = at;
-    els.push({ group: 'edges', data, classes: e.kind });
+    els.push({ group: 'edges', data, classes: `${e.kind} line-${lineStyle(config, e.kind)}` });
   }
   return els;
 }

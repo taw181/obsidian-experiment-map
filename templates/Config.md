@@ -31,6 +31,7 @@ templates:
   fibre-coupled: [input_fibre, output_fibre, input_lens, output_lens, input_power_mW, output_power_mW]
 unit_properties: [input_power_mW, output_power_mW]
 filter_tags: []
+line_styles: {beam: straight, control: right_angles, fibre: avoid_components, rf: right_angles}
 ---
 
 # Experiment map settings
@@ -71,3 +72,7 @@ nested settings below don't show properly in the Properties panel.
   is 150 × 46). `0` turns snapping off.
 - `filter_tags`: values a component's `filter_tag` may take, e.g. `[locking]`.
   Each gets a chip in the map's toolbar that hides the components with that tag.
+- `line_styles`: how lines are drawn, for `beam`, `rf`, `control` and each
+  `link: true` type: `straight`, `curved`, `right_angles` (elbows) or
+  `avoid_components` (right angles, routed around the boxes). The ⚙ button in
+  the map's toolbar sets them for everyone.

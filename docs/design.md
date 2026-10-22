@@ -143,8 +143,8 @@ Only the view draws it differently:
   appear in a component name, so these ids never clash;
 - an edge `link:<name>` between them: wavelength-coloured, outlined in the
   type's colour, always labelled with the name (with `⚠` if it has
-  problems), part of the beam layer. It is routed around the boxes and markers
-  shown (see Drawing); with no way round it is drawn as a curve;
+  problems), part of the beam layer. By default it is routed around the boxes
+  and markers shown (see Line styles); with no way round it is drawn as a curve;
 - edges into the fibre end at `#in`; edges out of it start at `#out`.
 
 Markers carry the fibre's status, experiment and filter tag, so filters hide them
@@ -323,16 +323,32 @@ edges dotted, both hidden by default. A collapsible legend shows the beam colour
 actually drawn and the edge and node styles. An optional background image pans
 and zooms with the map.
 
-**Fibre routing** (`src/plugin/route.js`). Each shown fibre line runs at right
-angles with rounded corners, clear of every shown box and marker except its own
-two ends by 14 px. Route lines are the ones just outside each box, through the
-fibre's ends and midway between those. The route is the shortest with a penalty
-for each turn and for running along a line an earlier fibre already uses, so
-parallel fibres spread out when there is room. Fibres are routed in id order,
-again whenever a node moves (at most once a frame) and whenever what is shown
-changes. A box whose margin covers a fibre's end loses its margin for that
-fibre, and one that contains the end is ignored. Routes are never saved. Beam,
-RF and control edges are not routed.
+**Line styles** (`line_styles` in `Config.md`, set from the ⚙ popup). Each edge
+kind (`beam`, `rf`, `control`) and each link type has one style, the same for
+everyone sharing the vault:
+
+| style | drawn as | default for |
+|---|---|---|
+| `straight` | a straight line; lines between the same two boxes bow apart | `beam` |
+| `curved` | a curve bowed to one side | |
+| `right_angles` | an elbow line (horizontal and vertical runs, rounded corners) that ignores other boxes | `rf`, `control` |
+| `avoid_components` | routed around the other boxes, below | link types |
+
+Each element's edges get the class `line-<style>` (`elements.js`); `style.js`
+draws each class. An unknown style draws as the default and is a problem.
+
+**Routing** (`src/plugin/route.js`), for `avoid_components`. Each shown line
+runs at right angles with rounded corners, clear of every shown box and marker
+except its own two ends by 14 px. It runs from centre to centre, or from a beam
+port's side when `port_sides` sets one, and is clipped at the ends' borders.
+Route lines are the ones just outside each box, through the line's ends and
+midway between those. The route is the shortest with a penalty for each turn
+and for running along a line an earlier one already uses, so parallel lines
+spread out when there is room. Lines are routed together in id order, again
+whenever a node moves (at most once a frame) and whenever what is shown changes,
+so hidden layers cost nothing. A box whose margin covers a line's end loses its
+margin for that line, and one that contains the end is ignored. Routes are never
+saved; with no way round, a line is drawn curved.
 
 **Interaction.**
 
@@ -348,7 +364,11 @@ RF and control edges are not routed.
 - **Toolbar**: layers (Beams, RF, Control); Show: a chip per experiment (from
   `channel_sources` and components), per `filter_tags` entry, and Spare/retired;
   search, which selects and centres a component (both fibre ends); `⚠ N`, a
-  problem list whose subjects jump to the component or note; `+`; Sync; Fit.
+  problem list whose subjects jump to the component or note; `+`; Sync; Fit;
+  ⚙, the map settings popup: a line style per edge kind and link type, each
+  change written straight to `Config.md` (only its `line_styles:` line, as one
+  flow mapping with sorted keys; the rest of the file is untouched), which
+  redraws the map.
 - A node is hidden if its status is, if it has experiments and none is shown, or
   if its filter tag's chip is off. An edge is hidden if its layer is off (unless
   in the selected chain), if it is an unselected `hide_line` fibre, or if either
@@ -527,6 +547,7 @@ body explains each key for users.
 | `templates` | `{}` | named lists of blank properties for New component |
 | `unit_properties` | `[]` | properties "Make model" leaves on the component |
 | `filter_tags` | `[]` | allowed `filter_tag` values, one toolbar chip each |
+| `line_styles` | `{beam: straight, rf: right_angles, control: right_angles}`; link types `avoid_components` | line style by edge kind or link type; see Line styles. Listed keys override the defaults one by one |
 
 ## Problems detected
 
@@ -542,6 +563,7 @@ from `check`; deduplicated and sorted by subject, then message. The messages
 | channel source | `channel source '<exp>': <error>` (no subject), the error being `channel source '<exp>' has no script`, `<script> not found`, `<script>: does not export parse(text, info)`, `<script>: fetch is not a function`, or what the script threw |
 | models | `extends [[<p>]], which is not a model note`; `inheritance cycle: <a> → <b> → <a>`; `extends must be a link, like "[[Generic AOM]]"` |
 | | `model [[<m>]] is not a model note`; `model must be a link, like "[[Example AOM model]]"` |
+| config | `line_styles: '<k>' is not beam, rf, control or a link type`; `line_styles: unknown style '<s>' for <k> (use straight, curved, right_angles, avoid_components)` (no subject) |
 | properties | `unknown status '<s>' (use active, spare, broken, retired)` |
 | | `unknown experiment '<e>' (Config.md lists <list>)` (only when known experiments exist) |
 | | `filter_tag takes one value, not <n>`; `unknown filter_tag '<t>' (Config.md's filter_tags lists <list or none>)` |

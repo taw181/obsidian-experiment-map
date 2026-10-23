@@ -5,8 +5,8 @@ Install or update the Experiment map plugin in an Obsidian vault (Windows).
 
 Or put install.ps1 in the vault folder, right-click it and choose "Run with PowerShell".
 The vault defaults to the vault the current folder is in, else the one the script is in.
-Re-run it to update. -Claude also installs the Claude skill (and the CLI it uses);
-once installed, updates keep it current. -From takes the files from a folder or URL
+Re-run it to update. -Claude also installs the Claude skills (and the CLI they use);
+once installed, updates keep them current. -From takes the files from a folder or URL
 instead of the latest GitHub release (for testing a local build).
 Works with Windows PowerShell 5.1 and PowerShell 7.
 #>
@@ -92,6 +92,20 @@ function Fetch([string]$name) {
   }
 }
 
+# Fetch-Optional NAME: as Fetch, but returns $false instead of stopping when the
+# file can't be had. Releases before the internals skill don't have its files.
+function Fetch-Optional([string]$name) {
+  $dest = Join-Path $Tmp $name
+  try {
+    if ($IsUrl) { Invoke-WebRequest -UseBasicParsing -Uri "$Base/$name" -OutFile $dest }
+    else { Copy-Item -LiteralPath (Join-Path $Base $name) -Destination $dest }
+  } catch {
+    Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue
+    return $false
+  }
+  return ((Get-Item -LiteralPath $dest).Length -gt 0)
+}
+
 function Manifest-Version([string]$path) {
   if (-not (Test-Path -LiteralPath $path)) { return $null }
   $m = [regex]::Match([IO.File]::ReadAllText($path), '"version"\s*:\s*"([^"]*)"')
@@ -100,6 +114,7 @@ function Manifest-Version([string]$path) {
 
 $PluginDir = Join-Path $Vault ".obsidian\plugins\$PluginId"
 $SkillDir = Join-Path $Vault '.claude\skills\experiment-map'
+$InternalsDir = Join-Path $Vault '.claude\skills\experiment-map-internals'
 $Old = Manifest-Version (Join-Path $PluginDir 'manifest.json')
 if (-not $Old) { $Old = 'not installed' }
 
@@ -107,7 +122,7 @@ if ($Claude) { $WithClaude = $true }
 elseif ($NoClaude) { $WithClaude = $false }
 elseif (Test-Path -LiteralPath $SkillDir -PathType Container) { $WithClaude = $true }
 elseif ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
-  $answer = Read-Host 'Also install the Claude skill? [y/N]'
+  $answer = Read-Host 'Also install the Claude skills? [y/N]'
   $WithClaude = $answer -match '^[yY]'
 } else { $WithClaude = $false }
 
@@ -115,7 +130,11 @@ elseif ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
 $Files = @('main.js', 'manifest.json', 'styles.css')
 $ClaudeFiles = @('cli.js', 'SKILL.md', 'CLAUDE-snippet.md')
 foreach ($f in $Files) { Fetch $f }
-if ($WithClaude) { foreach ($f in $ClaudeFiles) { Fetch $f } }
+$WithInternals = $false
+if ($WithClaude) {
+  foreach ($f in $ClaudeFiles) { Fetch $f }
+  $WithInternals = (Fetch-Optional 'SKILL-internals.md') -and (Fetch-Optional 'design.md')
+}
 if ([IO.File]::ReadAllText((Join-Path $Tmp 'manifest.json')) -notmatch ('"id"\s*:\s*"' + $PluginId + '"')) {
   Remove-Item -LiteralPath $Tmp -Recurse -Force -ErrorAction SilentlyContinue
   Fail-Download 'manifest.json' "it is not the Experiment map plugin's manifest"
@@ -129,6 +148,11 @@ if ($WithClaude) {
   Copy-Item -LiteralPath (Join-Path $Tmp 'cli.js') -Destination (Join-Path $PluginDir 'cli.js') -Force
   New-Item -ItemType Directory -Force -Path $SkillDir | Out-Null
   Copy-Item -LiteralPath (Join-Path $Tmp 'SKILL.md') -Destination (Join-Path $SkillDir 'SKILL.md') -Force
+  if ($WithInternals) {
+    New-Item -ItemType Directory -Force -Path $InternalsDir | Out-Null
+    Copy-Item -LiteralPath (Join-Path $Tmp 'SKILL-internals.md') -Destination (Join-Path $InternalsDir 'SKILL.md') -Force
+    Copy-Item -LiteralPath (Join-Path $Tmp 'design.md') -Destination (Join-Path $InternalsDir 'design.md') -Force
+  }
 
   # The CLAUDE.md block: replaced in place, or appended. Nothing outside the
   # markers changes: the file keeps its line endings and any UTF-8 BOM, and a
@@ -171,6 +195,8 @@ Remove-Item -LiteralPath $Tmp -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "Experiment map $Old -> $New in $Vault"
 if ($WithClaude) {
   Write-Host "Claude skill: $(Join-Path $SkillDir 'SKILL.md') (the CLI it uses needs Node 18 or later: node .obsidian/plugins/$PluginId/cli.js)"
+  if ($WithInternals) { Write-Host "Claude skill: $(Join-Path $InternalsDir 'SKILL.md')" }
+  else { Write-Host "This release has no internals skill; $InternalsDir left as it was." }
 }
 if ($Old -eq 'not installed') {
   Write-Host ''

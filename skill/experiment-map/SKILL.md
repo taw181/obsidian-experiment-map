@@ -7,7 +7,7 @@ description: Use when a question involves what feeds, drives, controls or locks 
 
 The vault's experiment map describes the lab as data. Component and model notes are the source of truth; `map.yaml`, `Sync report.md` and any channel pages are generated from them and from the channel sources named in `Config.md`.
 
-Read `Experiment map/Config.md` first (or the path in the plugin's settings): it lists the folders, the allowed `types`, the `experiments` and the `channel_sources`. The field reference is the `README.md` beside it. If this vault's `CLAUDE.md` has lab-specific rules for the experiment map, they take precedence over this skill. For why the plugin behaves as it does, suspected bugs, feature requests, the installed version and updates, use the `experiment-map-internals` skill.
+Read `Experiment map/Config.md` first (or the path in the plugin's settings): it lists the folders, the allowed `types`, the `experiments` and the `channel_sources`. The field reference is the `README.md` beside it. If this vault's `CLAUDE.md` has lab-specific rules for the experiment map, they take precedence over this skill. For why the plugin behaves as it does, suspected bugs, feature requests, the installed version and updates, use the `experiment-map-internals` skill. If it isn't installed, the install script that updated this vault was out of date: re-run the latest one (the plugin's README, Updating).
 
 All commands run from the vault root. `CLI` below means `node .obsidian/plugins/experiment-map/cli.js` (Node 18 or later).
 

@@ -34,9 +34,9 @@ Draft the issue first:
 - a title that states the defect or the request;
 - the installed plugin version (and the Obsidian version, for anything in the map view);
 - steps to reproduce, with the smallest frontmatter that shows it;
-- what was expected, citing the `design.md` section, and what happened, with the CLI output.
+- what was expected, citing the `design.md` section, and what happened, with only the CLI lines that show it.
 
-The repository is **public**. Replace the lab's names (components, channels, experiments, people) with generic placeholders unless the lab member agrees to post them. Show the lab member the draft, and file it only once they agree:
+The repository is **public**. Replace the lab's names (components, channels, experiments, people) with generic placeholders, and leave out note contents: `trace --notes` excerpts, `backlinks` lines, lab book page names and paths, and any other text from the vault's notes. Include any of these only if the lab member agrees to post them. Show the lab member the draft, and file it only once they agree:
 
 - if `gh auth status` succeeds: `gh issue create --repo taw181/obsidian-experiment-map --title "<title>" --body-file <draft file>`;
 - otherwise give them a prefilled link to open and submit themselves:
@@ -48,6 +48,6 @@ The repository is **public**. Replace the lab's names (components, channels, exp
 When the lab member wants to make the change themselves:
 
 1. Clone the repository **outside** the vault (a clone inside a synced vault gets synced, and Obsidian indexes it).
-2. Follow its `DEVELOPING.md`. Working in the clone, its own Claude skill for developing the plugin applies.
+2. Follow its `DEVELOPING.md`. The clone has its own Claude skill for developing the plugin, `.claude/skills/experiment-map-plugin/SKILL.md`, but this session won't load it: start a new Claude Code session in the clone, or read that file before changing anything.
 3. Test in a scratch vault, never in the lab's synced vault: a half-finished build would reach everyone.
 4. Push a branch to a fork and open a pull request (`gh pr create`).

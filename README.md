@@ -62,8 +62,11 @@ don't use Claude). Then, in Obsidian:
 
 ### Updating
 
-Run the same script again. It replaces the plugin's files and keeps your notes,
-settings and layout. Then restart Obsidian.
+Run the install again: on macOS and Linux, the same command; on Windows,
+download `install.ps1` again first, because an older copy installs the new
+release but not files added to it since (such as a new Claude skill). It
+replaces the plugin's files and keeps your notes, settings and layout. Then
+restart Obsidian.
 
 **Shared vaults.** If your lab shares one vault through git (for example with
 the Obsidian Git plugin), the plugin's files are committed like everything

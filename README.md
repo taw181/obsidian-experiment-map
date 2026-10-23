@@ -9,9 +9,9 @@ Each component's note lists every lab book page that links to it, with the
 lines that mention it.
 
 The map works in any vault and doesn't need a terminal once installed.
-Optionally, a [Claude Code](https://claude.com/claude-code) skill lets Claude
-answer questions about the map ("what controls the cooling shutter?") and help
-fill it in.
+Optionally, [Claude Code](https://claude.com/claude-code) skills let Claude
+answer questions about the map ("what controls the cooling shutter?"), help
+fill it in, and explain or report the plugin's own behaviour.
 
 The plugin isn't in Obsidian's community plugin list yet; install it with the
 script below.
@@ -49,7 +49,7 @@ them from anywhere inside it, for example the root of a git-synced vault. To
 install into a different vault, pass its path: `-Vault "C:\path\to\vault"` /
 `sh -s -- "/path/to/vault"`.
 
-The script asks whether to install the Claude skill too (answer **N** if you
+The script asks whether to install the Claude skills too (answer **N** if you
 don't use Claude). Then, in Obsidian:
 
 1. **Settings → Community plugins**: turn off Restricted mode if asked, then
@@ -181,24 +181,30 @@ other code you run, and review changes to them in a shared vault.
 
 ## Claude (optional)
 
-The skill teaches [Claude Code](https://claude.com/claude-code) to:
+Two skills teach [Claude Code](https://claude.com/claude-code) to:
 - answer questions from the map with a small command-line tool, using its
   `trace`, `backlinks`, `find` and `channels` commands;
 - fill the map in by interviewing you, walking each beam back to its laser;
-- fix the problems the map reports.
+- fix the problems the map reports;
+- explain why the plugin behaves as it does, from its design document; check
+  for updates; and draft bug reports and feature requests for this repository
+  (it shows you the draft first, since issues here are public).
 
 Install it by answering **y** to the script's question, or with `--claude` /
 `-Claude`. It adds:
 
-- `.claude/skills/experiment-map/SKILL.md`,
+- `.claude/skills/experiment-map/SKILL.md`, for using the map;
+- `.claude/skills/experiment-map-internals/`, for how the plugin works, with a
+  copy of [docs/design.md](docs/design.md) for the installed version;
 - `.obsidian/plugins/experiment-map/cli.js`, the command-line tool, which needs
   [Node.js](https://nodejs.org) 18 or later;
 - a short section in the vault's `CLAUDE.md`, between
   `<!-- experiment-map:start -->` and `<!-- experiment-map:end -->`. The rest of
   the file is never changed.
 
-Updates keep them current. To remove the skill, delete
-`.claude/skills/experiment-map/` and that section.
+Updates keep them current. To remove the skills, delete
+`.claude/skills/experiment-map/`, `.claude/skills/experiment-map-internals/`
+and that section.
 
 The command-line tool also works on its own, from the vault folder:
 

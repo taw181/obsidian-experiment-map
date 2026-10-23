@@ -4,8 +4,8 @@
 #   sh install.sh [VAULT] [--claude | --no-claude] [--version X.Y.Z] [--from DIR_OR_URL]
 #
 # VAULT defaults to the vault the current folder is in. Re-run it to update.
-# --claude also installs the Claude skill (and the CLI it uses); once
-# installed, updates keep it current. --from takes the files from a folder or
+# --claude also installs the Claude skills (and the CLI they use); once
+# installed, updates keep them current. --from takes the files from a folder or
 # URL instead of the latest GitHub release (for testing a local build).
 
 set -u
@@ -26,8 +26,8 @@ Install or update the Experiment map plugin in an Obsidian vault (macOS, Linux).
   sh install.sh [VAULT] [--claude | --no-claude] [--version X.Y.Z] [--from DIR_OR_URL]
 
 VAULT defaults to the vault the current folder is in. Re-run it to update.
---claude also installs the Claude skill (and the CLI it uses); once
-installed, updates keep it current. --from takes the files from a folder or
+--claude also installs the Claude skills (and the CLI they use); once
+installed, updates keep them current. --from takes the files from a folder or
 URL instead of the latest GitHub release (for testing a local build).
 USAGE
 }
@@ -113,6 +113,13 @@ fetch() {
 
 plugin_dir="$vault/.obsidian/plugins/$PLUGIN_ID"
 skill_dir="$vault/.claude/skills/experiment-map"
+internals_dir="$vault/.claude/skills/experiment-map-internals"
+
+# fetch_optional NAME: as fetch, but a file that can't be had only returns
+# non-zero. Releases before the internals skill don't have its files.
+fetch_optional() {
+  (fetch "$1") 2>/dev/null || { rm -f "$tmp/$1"; return 1; }
+}
 
 manifest_version() {
   sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$1" 2>/dev/null | head -n 1
@@ -124,7 +131,7 @@ if [ "$claude" = ask ]; then
   if [ -d "$skill_dir" ]; then
     claude=yes
   elif (exec </dev/tty) 2>/dev/null; then
-    printf 'Also install the Claude skill? [y/N] ' >/dev/tty
+    printf 'Also install the Claude skills? [y/N] ' >/dev/tty
     read -r answer </dev/tty || answer=
     case "$answer" in [yY]*) claude=yes ;; *) claude=no ;; esac
   else
@@ -136,6 +143,8 @@ fi
 for f in main.js manifest.json styles.css; do fetch "$f"; done
 if [ "$claude" = yes ]; then
   for f in cli.js SKILL.md CLAUDE-snippet.md; do fetch "$f"; done
+  internals=no
+  if fetch_optional SKILL-internals.md && fetch_optional design.md; then internals=yes; fi
 fi
 grep -q "\"id\"[[:space:]]*:[[:space:]]*\"$PLUGIN_ID\"" "$tmp/manifest.json" ||
   fail_download manifest.json "it is not the Experiment map plugin's manifest"
@@ -148,6 +157,11 @@ if [ "$claude" = yes ]; then
   put "$tmp/cli.js" "$plugin_dir/cli.js"
   mkdir -p "$skill_dir" || exit 3
   put "$tmp/SKILL.md" "$skill_dir/SKILL.md"
+  if [ "$internals" = yes ]; then
+    mkdir -p "$internals_dir" || exit 3
+    put "$tmp/SKILL-internals.md" "$internals_dir/SKILL.md"
+    put "$tmp/design.md" "$internals_dir/design.md"
+  fi
 
   # The CLAUDE.md block: replaced in place, or appended. Nothing outside the
   # markers changes, and a file with CRLF line endings keeps them.
@@ -184,6 +198,11 @@ fi
 echo "Experiment map $old → $new in $vault"
 if [ "$claude" = yes ]; then
   echo "Claude skill: $skill_dir/SKILL.md (the CLI it uses needs Node 18 or later: node .obsidian/plugins/$PLUGIN_ID/cli.js)"
+  if [ "$internals" = yes ]; then
+    echo "Claude skill: $internals_dir/SKILL.md"
+  else
+    echo "This release has no internals skill; $internals_dir left as it was."
+  fi
 fi
 if [ "$old" = "not installed" ]; then
   cat <<EOF

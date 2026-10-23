@@ -35,7 +35,9 @@ Experiment map/
 Experiment map practice/  the getting-started practice map: same layout, own Config.md
 .obsidian/plugins/experiment-map/
   main.js manifest.json styles.css    the plugin
-  cli.js                              the CLI (installed with the optional Claude skill)
+  cli.js                              the CLI (installed with the optional Claude skills)
+.claude/skills/experiment-map/           Claude skill for using the map (optional)
+.claude/skills/experiment-map-internals/ Claude skill for how the plugin works, with this document as design.md (optional)
 ```
 
 Notes are read recursively from the two note folders. Backlinks from lab book

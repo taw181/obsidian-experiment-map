@@ -28,7 +28,7 @@ release workflow builds them.
 | `src/plugin/` | Obsidian shell: `view.js` (Cytoscape), `elements.js`, `style.js`, `route.js` (fibre routing), `panel.js`, `commands.js`, `setup.js` |
 | `src/cli/` | Node shell: `cli.js` (commands), `node-io.js` |
 | `templates/` | Starter `Config.md` and how-to note, bundled into `main.js` for "Set up this vault" |
-| `skill/` | The Claude skill and `CLAUDE.md` block the install scripts copy into a vault |
+| `skill/` | What the install scripts copy into a vault for Claude: the `experiment-map` skill (using the map), the `experiment-map-internals` skill (how the plugin works, reporting, contributing; it ships `docs/design.md` beside it) and the `CLAUDE.md` block |
 | `install/` | `install.sh` (POSIX sh) and `install.ps1` (Windows PowerShell 5.1+) |
 | `examples/` | Example channel source |
 
@@ -90,7 +90,9 @@ git push --follow-tags
 
 The tag starts `.github/workflows/release.yml`, which builds and publishes a
 GitHub release with `main.js`, `manifest.json`, `styles.css`, `cli.js`,
-`SKILL.md`, `CLAUDE-snippet.md`, `install.sh` and `install.ps1`. The install
+`SKILL.md`, `SKILL-internals.md`, `design.md` (from `docs/design.md`, with its
+`../` links pointing at the tag), `CLAUDE-snippet.md`, `install.sh` and
+`install.ps1`. The install
 scripts download from the latest release. Check the release's assets once
 the workflow has run (`gh release view 0.3.0`).
 

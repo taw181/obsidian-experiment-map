@@ -7,11 +7,14 @@ const ASSETS = {
   'manifest.json': 'manifest.json',
   'styles.css': 'styles.css',
   'cli.js': 'cli.js',
-  'SKILL.md': 'skill/SKILL.md',
+  'SKILL.md': 'skill/experiment-map/SKILL.md',
+  'SKILL-internals.md': 'skill/experiment-map-internals/SKILL.md',
   'CLAUDE-snippet.md': 'skill/CLAUDE-snippet.md',
   'install.sh': 'install/install.sh',
   'install.ps1': 'install/install.ps1',
 };
+
+const REPO = 'https://github.com/taw181/obsidian-experiment-map';
 
 await fs.rm('dist', { recursive: true, force: true });
 await fs.mkdir('dist');
@@ -24,8 +27,18 @@ for (const [name, from] of Object.entries(ASSETS)) {
     missing.push(from);
   }
 }
+// design.md is the internals skill's reference. In a vault its links to
+// other repo files can't resolve, so they point at the repo at this release.
+try {
+  const { version } = JSON.parse(await fs.readFile('manifest.json', 'utf8'));
+  const text = await fs.readFile('docs/design.md', 'utf8');
+  await fs.writeFile('dist/design.md', text.replaceAll('](../', `](${REPO}/blob/${version}/`));
+} catch (e) {
+  if (e.code !== 'ENOENT') throw e;
+  missing.push('docs/design.md');
+}
 if (missing.length) {
   console.error(`dist: missing ${missing.join(', ')} (run npm run build first?)`);
   process.exit(1);
 }
-console.log(`dist: ${Object.keys(ASSETS).length} files`);
+console.log(`dist: ${Object.keys(ASSETS).length + 1} files`);

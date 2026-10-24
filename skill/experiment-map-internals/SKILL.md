@@ -32,7 +32,7 @@ The files in `.obsidian/plugins/experiment-map/` and `.claude/skills/experiment-
 Draft the issue first:
 
 - a title that states the defect or the request;
-- the installed plugin version (and the Obsidian version, for anything in the map view);
+- the installed plugin version (and, for anything in the map view, the Obsidian version: the vault doesn't record it, so ask the lab member);
 - steps to reproduce, with the smallest frontmatter that shows it;
 - what was expected, citing the `design.md` section, and what happened, with only the CLI lines that show it.
 

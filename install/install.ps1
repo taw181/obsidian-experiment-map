@@ -196,7 +196,7 @@ Write-Host "Experiment map $Old -> $New in $Vault"
 if ($WithClaude) {
   Write-Host "Claude skill: $(Join-Path $SkillDir 'SKILL.md') (the CLI it uses needs Node 18 or later: node .obsidian/plugins/$PluginId/cli.js)"
   if ($WithInternals) { Write-Host "Claude skill: $(Join-Path $InternalsDir 'SKILL.md')" }
-  else { Write-Host "This release has no internals skill; $InternalsDir left as it was." }
+  else { Write-Host "Could not get the internals skill (releases before it was added don't have one); $InternalsDir left as it was." }
 }
 if ($Old -eq 'not installed') {
   Write-Host ''

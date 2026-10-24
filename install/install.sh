@@ -201,7 +201,7 @@ if [ "$claude" = yes ]; then
   if [ "$internals" = yes ]; then
     echo "Claude skill: $internals_dir/SKILL.md"
   else
-    echo "This release has no internals skill; $internals_dir left as it was."
+    echo "Could not get the internals skill (releases before it was added don't have one); $internals_dir left as it was."
   fi
 fi
 if [ "$old" = "not installed" ]; then

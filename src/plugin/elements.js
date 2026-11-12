@@ -1,4 +1,4 @@
-import { autoPlace, applyLegacy, gridSize, snap } from '../core/layout.js';
+import { autoPlace, applyLegacy, clampDiameter, DEFAULT_DIAMETER, gridSize, snap } from '../core/layout.js';
 import { isLinkType, lineStyle, wavelengthColor } from '../core/config.js';
 import { asList } from '../core/wikilink.js';
 
@@ -44,17 +44,22 @@ function portEndpoints(c) {
   return out;
 }
 
+const isRound = (config, c) => config.types[c.props.type]?.shape === 'round';
+
 export function toElements(graph, config, positions, flagged) {
   const comps = Object.values(graph.components);
   const link = new Set(linkComponents(graph, config).map(c => c.name));
+  const saved = applyLegacy(positions, legacyLayoutKeys(graph, config));
+  // A round node is a circle: its saved diameter, else the default.
+  const diameter = c => (isRound(config, c) ? clampDiameter(saved[c.name]?.[2] ?? DEFAULT_DIAMETER) : null);
   // A fibre's output end on the same table as its input end goes beside it.
   const nodes = comps.flatMap(c => (link.has(c.name)
     ? [
         { name: markerId(c.name, 'in'), group: groupOf(c), size: MARKER },
         { name: markerId(c.name, 'out'), group: outGroupOf(c), size: MARKER, near: outGroupOf(c) === groupOf(c) ? markerId(c.name, 'in') : undefined },
       ]
-    : [{ name: c.name, group: groupOf(c) }]));
-  const withLegacy = applyLegacy(positions, legacyLayoutKeys(graph, config));
+    : [{ name: c.name, group: groupOf(c), size: isRound(config, c) ? [diameter(c), diameter(c)] : undefined }]));
+  const withLegacy = saved;
   const placed = autoPlace(nodes, withLegacy);
   // Boxes never placed by hand start on the grid; saved positions stay where they are.
   const g = gridSize(config);
@@ -98,6 +103,7 @@ export function toElements(graph, config, positions, flagged) {
       shape: typeDef.shape ?? 'box',
     };
     if (typeDef.color) data.color = typeDef.color;
+    if (isRound(config, c)) data.d = diameter(c);
     els.push({
       group: 'nodes',
       data,

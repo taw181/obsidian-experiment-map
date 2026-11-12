@@ -71,3 +71,5 @@
 .em-note-backlinks-line { margin: 2px 0 0 1em; padding: 2px 6px; border-radius: var(--radius-s); color: var(--text-muted); font-size: var(--font-ui-small); cursor: pointer; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .em-note-backlinks-line:hover { background: var(--background-modifier-hover); }
 .em-note-backlinks-hit { color: var(--text-normal); background: var(--text-highlight-bg); border-radius: 2px; }
+.em-resize-handle { position: absolute; z-index: 3; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--interactive-accent); border: 2px solid var(--background-primary); cursor: nwse-resize; touch-action: none; }
+.em-resize-handle.is-hidden { display: none; }

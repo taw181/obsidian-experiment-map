@@ -49,9 +49,10 @@ nested settings below don't show properly in the Properties panel.
   "Channel sources" in the plugin's README.
 - `types`: the allowed component types. `category` is `optical` or
   `electronics`; `source: true` means the component needs no inputs (lasers,
-  RF sources, controllers); `color` is its box colour; `shape: round` draws an
-  oval instead of a box; `subtitle: false` leaves the type and model line off
-  its boxes, showing just the name.
+  RF sources, controllers); `color` is its box colour; `shape: round` draws a
+  circle instead of a box (select it and drag the handle to resize it);
+  `subtitle: false` leaves the type and model line off its boxes, showing just
+  the name.
 - `link: true` on a type: its components are drawn as a connection with two
   ends instead of a box (fibres). `location` is the input end and
   `output_location` the output end; each end can be dragged on its own.

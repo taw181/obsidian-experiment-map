@@ -54,8 +54,10 @@ export class LayoutStore {
     return out;
   }
 
-  set(name, xy) {
-    this.pending.set(name, [Math.round(xy[0]), Math.round(xy[1])]);
+  // A round node's diameter is kept across moves; `diameter` sets a new one.
+  set(name, xy, diameter) {
+    const d = diameter ?? this.all()[name]?.[2];
+    this.pending.set(name, d === undefined ? [Math.round(xy[0]), Math.round(xy[1])] : [Math.round(xy[0]), Math.round(xy[1]), Math.round(d)]);
     this.scheduleSave(true);
   }
 

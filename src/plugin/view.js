@@ -7,6 +7,7 @@ import { setupVault } from './setup.js';
 import { PRACTICE_CONFIG_PATH } from '../core/guide.js';
 import { LINE_STYLES, lineStyle, lineStyleKeys, setLineStyles } from '../core/config.js';
 import { MapCanvas } from './map-canvas.js';
+import { CircleResizer } from './resize.js';
 
 export const VIEW_TYPE = 'experiment-map';
 
@@ -43,13 +44,27 @@ export class MapView extends ItemView {
       legendEl,
       bgEl,
       theme: readTheme(document.body),
-      onSelect: name => (name ? this.showPanel(name) : this.hidePanel()),
+      onSelect: name => {
+        if (name) this.showPanel(name);
+        else this.hidePanel();
+        this.resizer?.update();
+      },
       onOpen: name => {
         const c = this.canvas.graph?.components[name];
         if (c) this.openLink(c.path);
       },
     });
     this.bindDrag();
+    this.resizer = new CircleResizer({
+      canvas: this.canvas,
+      stage,
+      grid: () => gridSize(this.canvas.config),
+      commit: (node, d) => {
+        this.pinUnsaved(node);
+        const { x, y } = node.position();
+        this.plugin.layout.set(node.id(), [x, y], d);
+      },
+    });
 
     const onChange = file => { if (this.isMapFile(file.path)) this.scheduleRefresh(); };
     this.registerEvent(this.app.metadataCache.on('changed', onChange));
@@ -136,20 +151,24 @@ export class MapView extends ItemView {
     this.renderBackground();
   }
 
+  // Automatically placed boxes in the same groups as `moved` are saved where
+  // they are now, so moving or resizing something doesn't rearrange them.
+  pinUnsaved(moved) {
+    const saved = applyLegacy(this.plugin.layout.all(), this.plugin.layout.legacy);
+    moved.parent().children().forEach(n => {
+      if (saved[n.id()] || moved.contains(n)) return;
+      const { x, y } = n.position();
+      this.plugin.layout.set(n.id(), [x, y]);
+    });
+  }
+
   bindDrag() {
     this.canvas.cy.on('dragfree', 'node', e => {
       const moved = (e.target.data('isGroup') ? e.target.descendants() : e.target).filter(n => !n.data('isGroup'));
       if (moved.empty()) return;
       // A dropped box snaps to the grid; a dropped group moves as one, by the
       // step that puts its first box on the grid, so its arrangement is kept.
-      // Automatically placed boxes in the same groups are saved where they are
-      // now, so rearranging a group doesn't move them.
-      const saved = applyLegacy(this.plugin.layout.all(), this.plugin.layout.legacy);
-      moved.parent().children().forEach(n => {
-        if (saved[n.id()] || moved.contains(n)) return;
-        const { x, y } = n.position();
-        this.plugin.layout.set(n.id(), [x, y]);
-      });
+      this.pinUnsaved(moved);
       const p = moved[0].position();
       const [sx, sy] = snap([p.x, p.y], gridSize(this.canvas.config));
       const [dx, dy] = [sx - p.x, sy - p.y];
@@ -258,6 +277,8 @@ export class MapView extends ItemView {
 
   async onClose() {
     clearTimeout(this.refreshTimer);
+    this.resizer?.destroy();
+    this.resizer = null;
     this.canvas?.destroy();
     this.canvas = null;
   }

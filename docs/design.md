@@ -58,7 +58,7 @@ names a port or item of the component.
 |---|---|
 | `category` | `optical` or `electronics`. Only optical components inherit a wavelength, and new optical notes get `beam_from`/`rf_from` |
 | `source: true` | needs no inputs, and must set `experiment` itself |
-| `color`, `shape: round`, `subtitle: false` | node colour; oval instead of a rounded rectangle; show only the name, without the type and model line |
+| `color`, `shape: round`, `subtitle: false` | node colour; a circle (resizable, see `layout.json`) instead of a rounded rectangle; show only the name, without the type and model line |
 | `link: true` | drawn as a two-ended connection (fibres; see Fibres) |
 | `control_roles` | list of jobs its control links can do; each role `r` is a property `r_control_from` (see Control roles) |
 | `template: <name>` | template always added when a component of this type is created |
@@ -339,7 +339,7 @@ Opening the view starts a quiet sync whose notices are shown once per session.
 
 **Drawing.** One compound group per `location` ("Unplaced" for none), hidden
 when all its members are. Nodes are coloured by type; electronics are
-square-cornered and darker; `shape: round` types are ovals. A node shows its name
+square-cornered and darker; `shape: round` types are circles, 120 wide unless resized. A node shows its name
 and a line with type and model. `broken` nodes are red; nodes with problems have
 a dashed border and `⚠` before the name; `spare` and `retired` are hidden unless
 "Spare/retired" is on. Beams are solid and wavelength-coloured
@@ -532,6 +532,11 @@ set one up), and how to view the practice map again.
 - Sorted keys, integer coordinates, a blank line between entries, so concurrent
   moves of different nodes merge cleanly in git. Only placed nodes appear;
   entries for components that no longer exist are dropped on save.
+- A `shape: round` node may have a third number, its diameter: `[x, y, 200]`
+  (default 120, limits 60–600). Selecting a circle shows a handle on its lower
+  right; dragging it resizes the circle about its centre in steps of a quarter of `grid`
+  (hold Shift for single units), and saves the diameter on release. Moving the node keeps its diameter. The
+  read-only web map draws the saved sizes but has no handle.
 - Link components have `<name>#in` and `<name>#out`. A plain-name entry from
   before the type was a link type is used for `#in`; the next save writes `#in`
   and drops the plain name.

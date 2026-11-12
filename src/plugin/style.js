@@ -21,7 +21,7 @@ export function buildStyle(theme) {
   return [
     { selector: 'node', style: { shape: 'round-rectangle', width: 150, height: 46, 'background-color': theme.bgAlt, 'border-width': 1.5, 'border-color': theme.border, label: 'data(label)', 'text-wrap': 'wrap', 'text-max-width': 142, 'text-valign': 'center', 'text-halign': 'center', 'font-size': 11, color: theme.text, 'overlay-opacity': 0 } },
     { selector: 'node[color]', style: { 'background-color': 'data(color)', 'background-opacity': 0.2, 'border-color': 'data(color)' } },
-    { selector: 'node[shape = "round"]', style: { shape: 'ellipse' } },
+    { selector: 'node[shape = "round"]', style: { shape: 'ellipse', width: 'data(d)', height: 'data(d)', 'text-max-width': n => Math.round(n.data('d') * 0.75) } },
     { selector: 'node.electronics', style: { shape: 'rectangle', 'background-opacity': 0.35 } },
     { selector: 'node.status-broken', style: { 'border-color': '#e5484d', 'border-width': 3, 'background-color': '#e5484d' } },
     { selector: 'node.has-problem', style: { 'border-style': 'dashed' } },

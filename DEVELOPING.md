@@ -6,12 +6,12 @@ Needs Node 18 or later.
 
 ```sh
 npm install
-npm run build      # main.js (plugin) and cli.js (CLI), at the repo root
+npm run build      # main.js (plugin), cli.js (CLI) and web.js (web map), at the repo root
 npm run dev        # the same, rebuilding on every save
 npm run dist       # build, then collect the release assets in dist/
 ```
 
-`main.js`, `cli.js` and `dist/` are build outputs and aren't committed; the
+`main.js`, `cli.js`, `web.js` and `dist/` are build outputs and aren't committed; the
 release workflow builds them.
 
 ## Code map
@@ -25,8 +25,9 @@ release workflow builds them.
 | `core/graph.js` | `buildGraph()` builds `{components, models, channels[exp][name] = {primary, unit, usedBy}, edges, problems}` |
 | `core/trace.js`, `emit.js`, `layout.js` | `trace` text, the generated files, `layout.json` handling and auto-placement |
 | `core/query.js` | `find` / `channels` filters over the records `emit.js` writes to `map.yaml` |
-| `src/plugin/` | Obsidian shell: `view.js` (Cytoscape), `elements.js`, `style.js`, `route.js` (fibre routing), `panel.js`, `commands.js`, `setup.js` |
-| `src/cli/` | Node shell: `cli.js` (commands), `node-io.js` |
+| `src/plugin/` | Obsidian shell: `view.js` (toolbar, panel, dragging), `map-canvas.js` (the Cytoscape drawing, shared with the web map; no Obsidian imports), `elements.js`, `style.js`, `route.js` (fibre routing), `panel.js`, `commands.js`, `setup.js` |
+| `src/cli/` | Node shell: `cli.js` (commands), `node-io.js`, `record-io.js` (for `web-export`) |
+| `src/web/` | Read-only web map: `main.js` (`ExperimentMap.mount`), `memory-io.js`, `dom.js` (Obsidian's DOM helpers), `web.css` |
 | `templates/` | Starter `Config.md` and how-to note, bundled into `main.js` for "Set up this vault" |
 | `skill/` | What the install scripts copy into a vault for Claude: the `experiment-map` skill (using the map), the `experiment-map-internals` skill (how the plugin works, reporting, contributing; it ships `docs/design.md` beside it) and the `CLAUDE.md` block |
 | `install/` | `install.sh` (POSIX sh) and `install.ps1` (Windows PowerShell 5.1+) |
@@ -34,6 +35,25 @@ release workflow builds them.
 
 The design is in [docs/design.md](docs/design.md). Read it before changing
 behaviour, and update it when the behaviour changes.
+
+## Web build
+
+`web.js` and `web.css` (in `dist/`) draw a read-only map on any web page, for
+example a static site built from the vault. The page runs
+`node cli.js --vault VAULT web-export --out map-data.json`, which records every
+file the map reads plus each component's mentions, then calls:
+
+```js
+ExperimentMap.mount(element, {
+  dataUrl: 'map-data.json',
+  noteHref: linktextOrPath => 'URL of that note on the site, or null',
+});
+```
+
+The map is the plugin's own `MapCanvas` and panel, so it looks and behaves the
+same, without dragging, editing, Sync or settings. `web.css` maps Obsidian's
+theme variables onto a Quartz site's (`--light`, `--dark`, `--secondary` …), with
+fallbacks elsewhere.
 
 ## Rules
 

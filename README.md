@@ -106,7 +106,7 @@ Or, straight into your own map:
    What it feeds is worked out. Experiment and wavelength are inherited from
    upstream.
 
-Drag boxes to arrange them; the layout is saved in `Experiment map/layout.json`.
+Drag boxes to arrange them; the layout is saved in `Experiment map/layout.json`. Select a circle (a `shape: round` type, such as a chamber) and drag the handle on its lower right to resize it.
 Locations become groups on the map.
 
 The how-to note that "Set up this vault" writes, `Experiment map/README.md`,

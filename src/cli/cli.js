@@ -1,5 +1,7 @@
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { nodeIo, findMentions, findBacklinks } from './node-io.js';
+import { recordingIo } from './record-io.js';
 import { sync, check, loadInputs, buildOutputs, DEFAULT_CONFIG_PATH, ConfigError } from '../core/sync.js';
 import { formatTrace, upstream, downstream } from '../core/trace.js';
 import { formatFind, formatChannels, noteExcerpt } from '../core/query.js';
@@ -18,6 +20,10 @@ commands:
   find [FILTER ...]   components matching every filter, one line each
   channels [FILTER ...] [--unused]
                       control channels matching every filter, one line each
+  web-export --out FILE
+                      write what the web map needs (the map's notes, config,
+                      channel caches, layout.json and each component's
+                      mentions) to FILE as JSON
 
 A FILTER is key=value (exact) or key~text (contains), ignoring case; a bare word
 is name~word. Keys are those in map.yaml: any component property, plus note,
@@ -32,7 +38,7 @@ source, used_by and any extra key the channel source adds.
 `;
 
 function parseArgs(argv) {
-  const opts = { vault: process.cwd(), configPath: DEFAULT_CONFIG_PATH, offline: false, down: false, notes: false, unused: false, help: false, rest: [] };
+  const opts = { vault: process.cwd(), configPath: DEFAULT_CONFIG_PATH, offline: false, down: false, notes: false, unused: false, help: false, out: null, rest: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--vault') opts.vault = path.resolve(argv[++i]);
@@ -41,6 +47,7 @@ function parseArgs(argv) {
     else if (a === '--down') opts.down = true;
     else if (a === '--notes') opts.notes = true;
     else if (a === '--unused') opts.unused = true;
+    else if (a === '--out') opts.out = path.resolve(argv[++i]);
     else if (a === '-h' || a === '--help') opts.help = true;
     else opts.rest.push(a);
   }
@@ -143,6 +150,23 @@ async function main() {
     console.log(command === 'find'
       ? formatFind(graph, inputs.config, args)
       : formatChannels(graph, args, { unused: opts.unused }));
+    return 0;
+  }
+
+  if (command === 'web-export') {
+    if (!opts.out) {
+      process.stderr.write(USAGE);
+      return 2;
+    }
+    const { io: recorded, record } = recordingIo(io);
+    const inputs = await loadInputs(recorded, { configPath: opts.configPath, offline: true });
+    await recorded.readText(`${inputs.config.output_folder}/layout.json`);
+    const { graph } = buildOutputs(inputs);
+    const mentions = await findMentions(opts.vault, Object.keys(graph.components), inputs.config.output_folder);
+    const out = { format: 1, configPath: opts.configPath, files: record.files, listings: record.listings, mentions };
+    await fs.mkdir(path.dirname(opts.out), { recursive: true });
+    await fs.writeFile(opts.out, JSON.stringify(out), 'utf8');
+    console.log(`wrote ${opts.out}: ${Object.keys(record.files).length} files, ${Object.keys(graph.components).length} components`);
     return 0;
   }
 

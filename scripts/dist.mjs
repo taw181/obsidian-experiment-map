@@ -7,6 +7,7 @@ const ASSETS = {
   'manifest.json': 'manifest.json',
   'styles.css': 'styles.css',
   'cli.js': 'cli.js',
+  'web.js': 'web.js',
   'SKILL.md': 'skill/experiment-map/SKILL.md',
   'SKILL-internals.md': 'skill/experiment-map-internals/SKILL.md',
   'CLAUDE-snippet.md': 'skill/CLAUDE-snippet.md',
@@ -37,8 +38,16 @@ try {
   if (e.code !== 'ENOENT') throw e;
   missing.push('docs/design.md');
 }
+// web.css: the plugin's styles plus the theme mapping the web map needs.
+try {
+  const css = await Promise.all(['styles.css', 'src/web/web.css'].map(f => fs.readFile(f, 'utf8')));
+  await fs.writeFile('dist/web.css', css.join('\n'));
+} catch (e) {
+  if (e.code !== 'ENOENT') throw e;
+  missing.push('web.css sources');
+}
 if (missing.length) {
   console.error(`dist: missing ${missing.join(', ')} (run npm run build first?)`);
   process.exit(1);
 }
-console.log(`dist: ${Object.keys(ASSETS).length + 1} files`);
+console.log(`dist: ${Object.keys(ASSETS).length + 2} files`);

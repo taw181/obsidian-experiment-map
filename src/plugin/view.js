@@ -1,42 +1,30 @@
 import { ItemView, Modal, Notice, Platform, Setting, TFile } from 'obsidian';
-import cytoscape from 'cytoscape';
-import { buildStyle, readTheme } from './style.js';
-import { toElements } from './elements.js';
+import { readTheme } from './style.js';
 import { renderPanel } from './panel.js';
 import { mentionsFor } from './obsidian-io.js';
-import { chainOf } from '../core/trace.js';
 import { applyLegacy, gridSize, snap } from '../core/layout.js';
 import { setupVault } from './setup.js';
-import { routeLines, toSegments } from './route.js';
 import { PRACTICE_CONFIG_PATH } from '../core/guide.js';
 import { LINE_STYLES, lineStyle, lineStyleKeys, setLineStyles } from '../core/config.js';
+import { MapCanvas } from './map-canvas.js';
+import { CircleResizer } from './resize.js';
 
 export const VIEW_TYPE = 'experiment-map';
-
-// The component a map element stands for: a fibre's end markers and its edge
-// carry the fibre's name; a box's id is its name.
-const componentOf = ele => ele.data('component') ?? ele.id();
 
 export class MapView extends ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
-    this.cy = null;
-    this.graph = null;
-    this.config = null;
-    this.selected = null;
-    this.fitted = false;
+    this.canvas = null;
     this.refreshTimer = null;
-    this.routeFrame = null;
-    this.bgImg = null;
-    this.knownExperiments = [];
-    this.state = { layers: { beam: true, rf: false, control: false }, experiments: null, hiddenTags: new Set(), showRetired: false, legendOpen: true };
     this.listId = `em-names-${Math.random().toString(36).slice(2)}`;
   }
 
   getViewType() { return VIEW_TYPE; }
   getDisplayText() { return 'Experiment map'; }
   getIcon() { return 'map'; }
+
+  get selected() { return this.canvas?.selected ?? null; }
 
   async onOpen() {
     const root = this.contentEl;
@@ -46,21 +34,37 @@ export class MapView extends ItemView {
     this.errorEl = root.createDiv('em-error is-hidden');
     const body = root.createDiv('em-body');
     const stage = body.createDiv('em-stage');
-    this.bgEl = stage.createDiv('em-background');
+    const bgEl = stage.createDiv('em-background');
     this.cyEl = stage.createDiv('em-canvas');
-    this.legendEl = stage.createDiv('em-legend');
+    const legendEl = stage.createDiv('em-legend');
     this.panelEl = body.createDiv('em-panel is-hidden');
 
-    this.cy = cytoscape({
+    this.canvas = new MapCanvas({
       container: this.cyEl,
-      style: buildStyle(readTheme(document.body)),
-      wheelSensitivity: 2,
-      minZoom: 0.1,
-      maxZoom: 3,
-      boxSelectionEnabled: false,
-      autounselectify: true,
+      legendEl,
+      bgEl,
+      theme: readTheme(document.body),
+      onSelect: name => {
+        if (name) this.showPanel(name);
+        else this.hidePanel();
+        this.resizer?.update();
+      },
+      onOpen: name => {
+        const c = this.canvas.graph?.components[name];
+        if (c) this.openLink(c.path);
+      },
     });
-    this.bindGraphEvents();
+    this.bindDrag();
+    this.resizer = new CircleResizer({
+      canvas: this.canvas,
+      stage,
+      grid: () => gridSize(this.canvas.config),
+      commit: (node, d) => {
+        this.pinUnsaved(node);
+        const { x, y } = node.position();
+        this.plugin.layout.set(node.id(), [x, y], d);
+      },
+    });
 
     const onChange = file => { if (this.isMapFile(file.path)) this.scheduleRefresh(); };
     this.registerEvent(this.app.metadataCache.on('changed', onChange));
@@ -69,7 +73,7 @@ export class MapView extends ItemView {
     this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
       if (this.isMapFile(file.path) || this.isMapFile(oldPath)) this.scheduleRefresh();
     }));
-    this.registerEvent(this.app.workspace.on('css-change', () => this.cy?.style(buildStyle(readTheme(document.body)))));
+    this.registerEvent(this.app.workspace.on('css-change', () => this.canvas?.setTheme(readTheme(document.body))));
 
     if (Platform.isMobile && !this.plugin.warnedMobile) {
       this.plugin.warnedMobile = true;
@@ -97,10 +101,7 @@ export class MapView extends ItemView {
 
   // Another map is about to be drawn: forget this one's viewport, selection and chips.
   resetForMap() {
-    this.fitted = false;
-    this.selected = null;
-    this.state.experiments = null;
-    this.knownExperiments = [];
+    this.canvas?.reset();
   }
 
   isMapFile(path) {
@@ -118,7 +119,7 @@ export class MapView extends ItemView {
   }
 
   async refresh() {
-    if (!this.cy) return;
+    if (!this.canvas) return;
     let loaded;
     try {
       loaded = await this.plugin.loadGraph();
@@ -133,76 +134,43 @@ export class MapView extends ItemView {
       this.plugin.noticeOnce(`Experiment map: ${e.message}`);
       this.errorEl.setText(`⚠ ${e.message}`);
       this.errorEl.removeClass('is-hidden');
-      if (!this.graph) {
+      if (!this.canvas.graph) {
         this.toolbarEl.empty();
         const b = this.toolbarEl.createEl('button', { text: 'Sync', cls: 'em-chip' });
         b.addEventListener('click', () => this.plugin.sync());
       }
       return;
     }
-    if (!this.cy) return;
+    if (!this.canvas) return;
     this.errorEl.empty();
     this.errorEl.addClass('is-hidden');
     const { config, graph } = loaded;
-    this.config = config;
-    this.graph = graph;
-
-    const experiments = [...new Set([...config.channel_sources.map(h => h.experiment), ...Object.values(graph.components).flatMap(c => c.props.experiment ?? [])])].sort();
-    if (!this.state.experiments) this.state.experiments = new Set(experiments);
-    else for (const e of experiments) if (!this.knownExperiments.includes(e)) this.state.experiments.add(e);
-    this.knownExperiments = experiments;
-    // A tag dropped from Config.md loses its chip, so nothing should stay hidden by it.
-    for (const t of this.state.hiddenTags) if (!config.filter_tags.includes(t)) this.state.hiddenTags.delete(t);
-
     const flagged = new Set(graph.problems.map(p => p.subject).filter(Boolean));
-    const els = toElements(graph, config, this.plugin.layout.all(), flagged);
-    const zoom = this.cy.zoom();
-    const pan = { ...this.cy.pan() };
-    this.cy.batch(() => {
-      this.cy.elements().remove();
-      this.cy.add(els);
-    });
-    if (!this.fitted && els.length) {
-      // Fit once there is something to fit (a new practice map starts empty),
-      // without blowing a map of one or two boxes up to full size.
-      this.cy.fit(undefined, 40);
-      if (this.cy.zoom() > 1) {
-        this.cy.zoom(1);
-        this.cy.center();
-      }
-      this.fitted = true;
-    } else {
-      this.cy.viewport({ zoom, pan });
-    }
+    this.canvas.setData({ graph, config, positions: this.plugin.layout.all(), flagged });
     this.renderToolbar();
     this.renderBackground();
-    if (this.selected && graph.components[this.selected]) this.select(this.selected);
-    else this.clearSelection();
   }
 
-  bindGraphEvents() {
-    const cy = this.cy;
-    cy.on('tap', 'node, edge.link', e => {
-      if (!e.target.data('isGroup')) this.select(componentOf(e.target));
+  // Automatically placed boxes in the same groups as `moved` are saved where
+  // they are now, so moving or resizing something doesn't rearrange them.
+  pinUnsaved(moved) {
+    const saved = applyLegacy(this.plugin.layout.all(), this.plugin.layout.legacy);
+    moved.parent().children().forEach(n => {
+      if (saved[n.id()] || moved.contains(n)) return;
+      const { x, y } = n.position();
+      this.plugin.layout.set(n.id(), [x, y]);
     });
-    cy.on('tap', e => {
-      if (e.target === cy) this.clearSelection();
-    });
-    cy.on('dragfree', 'node', e => {
+  }
+
+  bindDrag() {
+    this.canvas.cy.on('dragfree', 'node', e => {
       const moved = (e.target.data('isGroup') ? e.target.descendants() : e.target).filter(n => !n.data('isGroup'));
       if (moved.empty()) return;
       // A dropped box snaps to the grid; a dropped group moves as one, by the
       // step that puts its first box on the grid, so its arrangement is kept.
-      // Automatically placed boxes in the same groups are saved where they are
-      // now, so rearranging a group doesn't move them.
-      const saved = applyLegacy(this.plugin.layout.all(), this.plugin.layout.legacy);
-      moved.parent().children().forEach(n => {
-        if (saved[n.id()] || moved.contains(n)) return;
-        const { x, y } = n.position();
-        this.plugin.layout.set(n.id(), [x, y]);
-      });
+      this.pinUnsaved(moved);
       const p = moved[0].position();
-      const [sx, sy] = snap([p.x, p.y], gridSize(this.config));
+      const [sx, sy] = snap([p.x, p.y], gridSize(this.canvas.config));
       const [dx, dy] = [sx - p.x, sy - p.y];
       moved.forEach(n => {
         // position() is Cytoscape's live object, so read it before moving the box.
@@ -211,83 +179,19 @@ export class MapView extends ItemView {
         this.plugin.layout.set(n.id(), [x + dx, y + dy]);
       });
     });
-    // Lines are re-routed at most once a frame while anything moves.
-    cy.on('position', 'node', () => {
-      if (this.routeFrame == null) this.routeFrame = requestAnimationFrame(() => { this.routeFrame = null; this.routeLines(); });
-    });
-    cy.on('viewport', () => this.positionBackground());
-    cy.on('dbltap', 'node, edge.link', e => {
-      const c = this.graph?.components[componentOf(e.target)];
-      if (c) this.openLink(c.path);
-    });
-  }
-
-  applyVisibility() {
-    const { layers, experiments, hiddenTags, showRetired } = this.state;
-    this.cy.batch(() => {
-      this.cy.nodes().forEach(n => {
-        if (n.data('isGroup')) return;
-        const status = n.data('status');
-        const exps = n.data('experiment');
-        const hide = (!showRetired && (status === 'retired' || status === 'spare'))
-          || (exps.length > 0 && !exps.some(x => experiments.has(x)))
-          || hiddenTags.has(n.data('filterTag'));
-        n.toggleClass('hidden', hide);
-      });
-      this.cy.nodes().forEach(n => {
-        if (n.data('isGroup')) n.toggleClass('hidden', n.children().every(ch => ch.hasClass('hidden')));
-      });
-      this.cy.edges().forEach(e => {
-        // A fibre with hide_line shows its line only while its chain is selected.
-        const on = (layers[e.data('kind')] && !e.hasClass('hide-line')) || e.hasClass('lit');
-        e.toggleClass('hidden', !on || e.source().hasClass('hidden') || e.target().hasClass('hidden'));
-      });
-    });
-    this.routeLines();
-    this.renderLegend();
-  }
-
-  // Routes each shown line whose style avoids components around the shown
-  // boxes and markers (route.js). Hidden boxes don't count, so this runs again
-  // whenever visibility changes.
-  routeLines() {
-    if (!this.cy) return;
-    const lines = this.cy.edges('.line-avoid_components').filter(e => !e.hasClass('hidden'));
-    if (lines.empty()) return;
-    const boxes = this.cy.nodes().filter(n => !n.data('isGroup') && !n.hasClass('hidden')).map(n => {
-      const { x1, y1, x2, y2 } = n.boundingBox({ includeLabels: true, includeOverlays: false });
-      return { id: n.id(), x1, y1, x2, y2 };
-    });
-    const at = n => [n.position('x'), n.position('y')];
-    // A beam leaving from a port starts at the port's side, not the box centre.
-    const start = e => {
-      const [x, y] = at(e.source());
-      const p = /^(-?[\d.]+)% (-?[\d.]+)%$/.exec(e.data('sourceEndpoint') ?? '');
-      return p ? [x + (p[1] / 100) * e.source().width(), y + (p[2] / 100) * e.source().height()] : [x, y];
-    };
-    const routed = lines.map(e => ({ id: e.id(), from: start(e), to: at(e.target()), centres: [at(e.source()), at(e.target())], ends: [e.source().id(), e.target().id()] }));
-    const routes = routeLines(routed, boxes);
-    this.cy.batch(() => routed.forEach(l => {
-      const e = this.cy.getElementById(l.id);
-      const seg = routes[l.id] && toSegments(...l.centres, routes[l.id]);
-      if (!seg) {
-        e.removeClass('routed');
-        return;
-      }
-      e.data({ segWeights: seg.weights, segDistances: seg.distances });
-      e.addClass('routed');
-    }));
   }
 
   renderToolbar() {
     const bar = this.toolbarEl;
+    const canvas = this.canvas;
+    const { state } = canvas;
     bar.empty();
     const chip = (parent, label, on, onClick, title) => {
       const b = parent.createEl('button', { text: label, cls: `em-chip${on ? ' is-on' : ''}`, attr: title ? { 'aria-label': title } : {} });
       b.addEventListener('click', onClick);
       return b;
     };
-    const toggled = () => { this.applyVisibility(); this.renderToolbar(); };
+    const toggled = () => { canvas.applyVisibility(); this.renderToolbar(); };
 
     if (this.plugin.hasPractice) {
       const maps = bar.createDiv('em-group');
@@ -299,165 +203,84 @@ export class MapView extends ItemView {
     const layers = bar.createDiv('em-group');
     layers.createSpan({ text: 'Layers', cls: 'em-muted' });
     for (const [k, label] of [['beam', 'Beams'], ['rf', 'RF'], ['control', 'Control']]) {
-      chip(layers, label, this.state.layers[k], () => { this.state.layers[k] = !this.state.layers[k]; toggled(); });
+      chip(layers, label, state.layers[k], () => { state.layers[k] = !state.layers[k]; toggled(); });
     }
 
     const show = bar.createDiv('em-group');
     show.createSpan({ text: 'Show', cls: 'em-muted' });
-    for (const x of this.knownExperiments) {
-      chip(show, x, this.state.experiments.has(x), () => {
-        if (this.state.experiments.has(x)) this.state.experiments.delete(x);
-        else this.state.experiments.add(x);
+    for (const x of canvas.knownExperiments) {
+      chip(show, x, state.experiments.has(x), () => {
+        if (state.experiments.has(x)) state.experiments.delete(x);
+        else state.experiments.add(x);
         toggled();
       });
     }
-    for (const t of this.config.filter_tags) {
-      chip(show, t, !this.state.hiddenTags.has(t), () => {
-        if (this.state.hiddenTags.has(t)) this.state.hiddenTags.delete(t);
-        else this.state.hiddenTags.add(t);
+    for (const t of canvas.config.filter_tags) {
+      chip(show, t, !state.hiddenTags.has(t), () => {
+        if (state.hiddenTags.has(t)) state.hiddenTags.delete(t);
+        else state.hiddenTags.add(t);
         toggled();
       });
     }
-    chip(show, 'Spare/retired', this.state.showRetired, () => { this.state.showRetired = !this.state.showRetired; toggled(); });
+    chip(show, 'Spare/retired', state.showRetired, () => { state.showRetired = !state.showRetired; toggled(); });
 
     const actions = bar.createDiv('em-group em-actions');
     const search = actions.createEl('input', { type: 'search', cls: 'em-search', attr: { placeholder: 'Find component…', list: this.listId } });
     const list = actions.createEl('datalist', { attr: { id: this.listId } });
-    for (const n of Object.keys(this.graph.components)) list.createEl('option', { attr: { value: n } });
-    search.addEventListener('change', () => this.find(search.value.trim()));
-    const count = this.graph.problems.length;
-    chip(actions, `⚠ ${count}`, count > 0, () => new ProblemsModal(this.app, this.graph.problems, s => (this.graph.components[s] ? this.find(s) : this.openLink(s))).open(), 'Problems');
-    chip(actions, '+', false, () => this.plugin.newComponent(this.selected), 'New component');
+    for (const n of Object.keys(canvas.graph.components)) list.createEl('option', { attr: { value: n } });
+    search.addEventListener('change', () => canvas.find(search.value.trim()));
+    const count = canvas.graph.problems.length;
+    chip(actions, `⚠ ${count}`, count > 0, () => new ProblemsModal(this.app, canvas.graph.problems, s => (canvas.graph.components[s] ? canvas.find(s) : this.openLink(s))).open(), 'Problems');
+    chip(actions, '+', false, () => this.plugin.newComponent(canvas.selected), 'New component');
     chip(actions, 'Sync', false, () => this.plugin.sync(), 'Sync with the channel sources');
-    chip(actions, 'Fit', false, () => this.cy.fit(this.cy.elements(':visible'), 40), 'Fit map to view');
-    chip(actions, '⚙', false, () => new SettingsModal(this.app, this.config, this.plugin.configPath()).open(), 'Map settings');
-  }
-
-  find(name) {
-    const n = this.cy.nodes().filter(x => !x.data('isGroup') && componentOf(x) === name);
-    if (n.empty()) return;
-    this.select(name);
-    if (n.length === 1) {
-      this.cy.animate({ center: { eles: n }, zoom: Math.max(this.cy.zoom(), 1) }, { duration: 250 });
-      return;
-    }
-    // Both ends of a fibre: fit them, but don't zoom in further than now.
-    const before = { zoom: this.cy.zoom(), pan: { ...this.cy.pan() } };
-    this.cy.fit(n, 80);
-    const zoom = Math.min(this.cy.zoom(), Math.max(before.zoom, 1));
-    this.cy.viewport(before);
-    this.cy.animate({ center: { eles: n }, zoom }, { duration: 250 });
-  }
-
-  select(name) {
-    if (!this.graph?.components[name]) return;
-    this.selected = name;
-    const { nodes, edges } = chainOf(this.graph, name);
-    this.cy.batch(() => {
-      this.cy.elements().removeClass('lit dim root');
-      this.cy.nodes().forEach(n => {
-        if (n.data('isGroup')) return;
-        n.addClass(nodes.has(componentOf(n)) ? 'lit' : 'dim');
-        if (componentOf(n) === name) n.addClass('root');
-      });
-      this.cy.edges().forEach(e => e.addClass(edges.has(e.id()) || nodes.has(e.data('component')) ? 'lit' : 'dim'));
-    });
-    this.applyVisibility();
-    this.showPanel(name);
-  }
-
-  clearSelection() {
-    this.selected = null;
-    this.cy.elements().removeClass('lit dim root');
-    this.applyVisibility();
-    this.panelEl.empty();
-    this.panelEl.addClass('is-hidden');
+    chip(actions, 'Fit', false, () => canvas.fit(), 'Fit map to view');
+    chip(actions, '⚙', false, () => new SettingsModal(this.app, canvas.config, this.plugin.configPath()).open(), 'Map settings');
   }
 
   showPanel(name) {
+    const { graph, config } = this.canvas;
     renderPanel(this.panelEl, name, {
-      graph: this.graph,
+      graph,
       channelSources: this.plugin.channelSources,
-      mentions: mentionsFor(this.app, this.graph.components[name].path, this.config.output_folder),
-      select: n => this.find(n),
+      mentions: mentionsFor(this.app, graph.components[name].path, config.output_folder),
+      select: n => this.canvas.find(n),
       openLink: l => this.openLink(l),
-      close: () => this.clearSelection(),
+      close: () => this.canvas.clearSelection(),
     });
+  }
+
+  hidePanel() {
+    this.panelEl.empty();
+    this.panelEl.addClass('is-hidden');
   }
 
   openLink(linktext) {
     this.app.workspace.openLinkText(linktext, '', 'tab');
   }
 
-  renderLegend() {
-    const el = this.legendEl;
-    const cfg = this.config;
-    el.empty();
-    const head = el.createDiv({ cls: 'em-legend-head', text: this.state.legendOpen ? 'Legend ▾' : 'Legend ▸' });
-    head.addEventListener('click', () => { this.state.legendOpen = !this.state.legendOpen; this.renderLegend(); });
-    if (!this.state.legendOpen) return;
-    const row = (sample, text) => {
-      const r = el.createDiv('em-legend-row');
-      sample(r.createSpan('em-legend-sample'));
-      r.createSpan({ text });
-    };
-    const line = (color, style, width = 3) => s => { s.addClass('em-legend-line'); s.style.borderTop = `${width}px ${style} ${color}`; };
-    const box = cls => s => s.addClass('em-legend-box', cls);
-    // only the beam colours on the map: beams between nodes that are shown
-    const drawn = new Set(this.cy.edges('[kind = "beam"]')
-      .filter(e => !e.source().hasClass('hidden') && !e.target().hasClass('hidden'))
-      .map(e => e.data('color')));
-    const wl = Object.keys(cfg.wavelength_colors ?? {})
-      .filter(nm => drawn.has(cfg.wavelength_colors[nm]))
-      .sort((a, b) => Number(a) - Number(b));
-    for (const nm of wl) row(line(cfg.wavelength_colors[nm], 'solid', 4), `beam, ${nm} nm`);
-    if (drawn.has(cfg.default_wavelength_color) || !wl.length) row(line(cfg.default_wavelength_color, 'solid', 4), wl.length ? 'beam, other wavelength' : 'beam');
-    row(line(cfg.rf_color, 'dashed'), 'RF (layer: RF)');
-    row(line(cfg.control_color, 'dotted'), 'control (layer: Control)');
-    row(box('is-optical'), 'optical component');
-    row(box('is-electronics'), 'electronics');
-    const round = Object.keys(cfg.types).filter(t => cfg.types[t]?.shape === 'round');
-    if (round.length) row(box('is-round'), round.join(', '));
-    row(box('is-broken'), 'status: broken');
-    row(box('is-problem'), '⚠ has a problem');
-  }
-
   renderBackground() {
-    this.bgEl.empty();
-    this.bgImg = null;
-    const bg = this.config.background;
-    if (!bg || !bg.image) return;
-    const linkpath = String(bg.image).replace(/^!?\[\[|\]\]$/g, '');
-    const file = this.app.metadataCache.getFirstLinkpathDest(linkpath, '');
-    if (!file) {
-      console.warn(`experiment-map: background image '${bg.image}' not found`);
+    const bg = this.canvas.config.background;
+    if (!bg || !bg.image) {
+      this.canvas.setBackground(null);
       return;
     }
-    this.bgImg = this.bgEl.createEl('img', { attr: { src: this.app.vault.getResourcePath(file), draggable: 'false', alt: '' } });
-    this.positionBackground();
-  }
-
-  positionBackground() {
-    if (!this.bgImg || !this.cy) return;
-    const bg = this.config.background;
-    const z = this.cy.zoom();
-    const p = this.cy.pan();
-    const s = Number(bg.scale ?? 1);
-    const x = Number(bg.x ?? 0);
-    const y = Number(bg.y ?? 0);
-    this.bgImg.style.transform = `translate(${p.x + x * z}px, ${p.y + y * z}px) scale(${s * z})`;
+    const linkpath = String(bg.image).replace(/^!?\[\[|\]\]$/g, '');
+    const file = this.app.metadataCache.getFirstLinkpathDest(linkpath, '');
+    if (!file) console.warn(`experiment-map: background image '${bg.image}' not found`);
+    this.canvas.setBackground(file ? this.app.vault.getResourcePath(file) : null);
   }
 
   onResize() {
-    this.cy?.resize();
+    this.canvas?.resize();
     this.contentEl.toggleClass('is-narrow', this.contentEl.clientWidth < 700);
   }
 
   async onClose() {
     clearTimeout(this.refreshTimer);
-    if (this.routeFrame != null) cancelAnimationFrame(this.routeFrame);
-    this.cy?.destroy();
-    this.cy = null;
+    this.resizer?.destroy();
+    this.resizer = null;
+    this.canvas?.destroy();
+    this.canvas = null;
   }
 }
 

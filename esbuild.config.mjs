@@ -5,6 +5,7 @@ const common = { bundle: true, format: 'cjs', target: 'es2020', logLevel: 'info'
 const builds = [
   { ...common, entryPoints: ['src/plugin/main.js'], outfile: 'main.js', platform: 'browser', external: ['obsidian', 'electron'], loader: { '.md': 'text' } },
   { ...common, entryPoints: ['src/cli/cli.js'], outfile: 'cli.js', platform: 'node', banner: { js: '#!/usr/bin/env node' } },
+  { ...common, entryPoints: ['src/web/main.js'], outfile: 'web.js', platform: 'browser', format: 'iife' },
 ];
 
 if (watch) {

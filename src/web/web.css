@@ -1,0 +1,57 @@
+/* The web map (web.js): Obsidian's theme variables, which styles.css and
+   style.js's readTheme() use, mapped onto a Quartz site's colours. Quartz
+   switches those colours for dark mode, and these follow. Fallbacks are for a
+   page that isn't Quartz. */
+.em-web {
+  --background-primary: var(--light, #ffffff);
+  --background-primary-alt: var(--lightgray, #f2f2f2);
+  --background-secondary: var(--light, #f6f6f6);
+  --background-modifier-border: var(--lightgray, #dddddd);
+  --background-modifier-hover: var(--highlight, rgba(0, 0, 0, 0.06));
+  --text-normal: var(--darkgray, #222222);
+  --text-muted: var(--gray, #777777);
+  --text-faint: var(--gray, #999999);
+  --text-on-accent: var(--light, #ffffff);
+  --text-error: #e5484d;
+  --text-success: #2f9e44;
+  --text-highlight-bg: var(--textHighlight, #fff23688);
+  --interactive-accent: var(--secondary, #7b6cd9);
+  --link-color: var(--secondary, #7b6cd9);
+  --color-orange: #e8590c;
+  --color-orange-rgb: 232, 89, 12;
+  --font-semibold: 600;
+  --font-text-size: 1rem;
+  --font-ui-medium: 0.95rem;
+  --font-ui-small: 0.85rem;
+  --font-ui-smaller: 0.78rem;
+  --radius-s: 4px;
+  --radius-m: 8px;
+  height: 78vh;
+  min-height: 420px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+.em-web .em-chip {
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+.em-web .em-chip.is-on {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.em-web .em-search {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: 2px 8px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+.em-web a.internal-link {
+  color: var(--link-color);
+  cursor: pointer;
+}

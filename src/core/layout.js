@@ -1,7 +1,15 @@
 // layout.json: { "component name": [x, y], ... }, sorted, one entry per line with
 // a blank line between entries, so git merges moves of different boxes cleanly.
+// A round node (`shape: round`) may carry its diameter as a third number:
+// [x, y, diameter].
 
-const ENTRY = /^\s*("(?:[^"\\]|\\.)*")\s*:\s*\[\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]/;
+export const DEFAULT_DIAMETER = 120;
+export const MIN_DIAMETER = 60;
+export const MAX_DIAMETER = 600;
+export const clampDiameter = d => Math.min(MAX_DIAMETER, Math.max(MIN_DIAMETER, Math.round(d)));
+
+const NUM = '(-?\\d+(?:\\.\\d+)?)';
+const ENTRY = new RegExp(`^\\s*("(?:[^"\\\\]|\\\\.)*")\\s*:\\s*\\[\\s*${NUM}\\s*,\\s*${NUM}\\s*(?:,\\s*${NUM}\\s*)?\\]`);
 
 // Entries that can still be read line by line from a broken file, e.g. one left
 // with git conflict markers. Where a name appears twice, the later line wins.
@@ -11,7 +19,7 @@ function salvage(text) {
     const m = ENTRY.exec(line);
     if (!m) continue;
     try {
-      positions[JSON.parse(m[1])] = [Number(m[2]), Number(m[3])];
+      positions[JSON.parse(m[1])] = m[4] === undefined ? [Number(m[2]), Number(m[3])] : [Number(m[2]), Number(m[3]), Number(m[4])];
     } catch {
       // not a valid JSON string; skip the line
     }
@@ -30,7 +38,7 @@ export function parseLayout(text) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok: false, positions: {} };
   const positions = {};
   for (const [k, v] of Object.entries(obj)) {
-    if (Array.isArray(v) && v.length === 2 && v.every(Number.isFinite)) positions[k] = [v[0], v[1]];
+    if (Array.isArray(v) && (v.length === 2 || v.length === 3) && v.every(Number.isFinite)) positions[k] = v.slice();
   }
   return { ok: true, positions };
 }
@@ -49,7 +57,7 @@ export function applyLegacy(positions, legacy) {
 export function serializeLayout(positions, keep = null) {
   const names = Object.keys(positions).filter(n => !keep || keep.has(n)).sort();
   if (!names.length) return '{}\n';
-  const rows = names.map(n => `  ${JSON.stringify(n)}: [${Math.round(positions[n][0])}, ${Math.round(positions[n][1])}]`);
+  const rows = names.map(n => `  ${JSON.stringify(n)}: [${positions[n].slice(0, 3).map(Math.round).join(', ')}]`);
   return `{\n${rows.join(',\n\n')}\n}\n`;
 }
 
